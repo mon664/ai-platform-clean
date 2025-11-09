@@ -1,7 +1,30 @@
 import Redis from 'ioredis';
 
-// Redis 클라이언트 초기화
-const redis = new Redis(process.env.REDIS_URL || '');
+// Redis 클라이언트 초기화 (with error handling)
+let redis: Redis | null = null;
+
+try {
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl && redisUrl.trim() !== '') {
+    redis = new Redis(redisUrl, {
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3,
+      lazyConnect: true
+    });
+
+    redis.on('error', (err) => {
+      console.error('Redis connection error:', err.message);
+      redis = null;
+    });
+  }
+} catch (error) {
+  console.error('Failed to initialize Redis:', error);
+  redis = null;
+}
+
+// Fallback 메모리 저장소
+const memoryStorage: { [key: string]: string } = {};
+const blogList: string[] = [];
 
 export interface BlogPost {
   slug: string;
@@ -30,47 +53,102 @@ export async function createPost(title: string, content: string): Promise<BlogPo
     createdAt: new Date().toISOString(),
   };
 
-  // Redis에 포스트 저장 (JSON 문자열로)
-  await redis.set(`blog:${slug}`, JSON.stringify(post));
-
-  // 포스트 목록에 slug 추가
-  await redis.lpush('blog:list', slug);
+  // Redis 또는 메모리에 포스트 저장
+  try {
+    if (redis) {
+      await redis.set(`blog:${slug}`, JSON.stringify(post));
+      await redis.lpush('blog:list', slug);
+    } else {
+      memoryStorage[`blog:${slug}`] = JSON.stringify(post);
+      blogList.unshift(slug);
+    }
+  } catch (error) {
+    console.error('Failed to save post:', error);
+    // Fallback to memory storage
+    memoryStorage[`blog:${slug}`] = JSON.stringify(post);
+    blogList.unshift(slug);
+  }
 
   return post;
 }
 
 // 글 목록 조회
 export async function listPosts(): Promise<BlogPost[]> {
-  // 포스트 slug 목록 조회
-  const slugs = await redis.lrange('blog:list', 0, -1);
+  try {
+    if (redis) {
+      // Redis에서 포스트 slug 목록 조회
+      const slugs = await redis.lrange('blog:list', 0, -1);
 
-  if (!slugs || slugs.length === 0) {
-    return [];
-  }
+      if (!slugs || slugs.length === 0) {
+        return [];
+      }
 
-  // 각 slug에 대한 포스트 조회
-  const posts: BlogPost[] = [];
-  for (const slug of slugs) {
-    const postJson = await redis.get(`blog:${slug}`);
-    if (postJson) {
-      const post = JSON.parse(postJson) as BlogPost;
-      posts.push(post);
+      // 각 slug에 대한 포스트 조회
+      const posts: BlogPost[] = [];
+      for (const slug of slugs) {
+        const postJson = await redis.get(`blog:${slug}`);
+        if (postJson) {
+          const post = JSON.parse(postJson) as BlogPost;
+          posts.push(post);
+        }
+      }
+
+      // 최신순 정렬
+      return posts.sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    } else {
+      // 메모리 저장소에서 조회
+      const posts: BlogPost[] = [];
+      for (const slug of blogList) {
+        const postJson = memoryStorage[`blog:${slug}`];
+        if (postJson) {
+          const post = JSON.parse(postJson) as BlogPost;
+          posts.push(post);
+        }
+      }
+      return posts;
     }
+  } catch (error) {
+    console.error('Failed to list posts:', error);
+    // Fallback to memory storage
+    const posts: BlogPost[] = [];
+    for (const slug of blogList) {
+      const postJson = memoryStorage[`blog:${slug}`];
+      if (postJson) {
+        const post = JSON.parse(postJson) as BlogPost;
+        posts.push(post);
+      }
+    }
+    return posts;
   }
-
-  // 최신순 정렬
-  return posts.sort((a, b) =>
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
 }
 
 // 특정 글 조회
 export async function getPost(slug: string): Promise<BlogPost | null> {
-  const postJson = await redis.get(`blog:${slug}`);
-  if (!postJson) {
-    return null;
+  try {
+    if (redis) {
+      const postJson = await redis.get(`blog:${slug}`);
+      if (!postJson) {
+        return null;
+      }
+      return JSON.parse(postJson) as BlogPost;
+    } else {
+      const postJson = memoryStorage[`blog:${slug}`];
+      if (!postJson) {
+        return null;
+      }
+      return JSON.parse(postJson) as BlogPost;
+    }
+  } catch (error) {
+    console.error('Failed to get post:', error);
+    // Fallback to memory storage
+    const postJson = memoryStorage[`blog:${slug}`];
+    if (!postJson) {
+      return null;
+    }
+    return JSON.parse(postJson) as BlogPost;
   }
-  return JSON.parse(postJson) as BlogPost;
 }
 
 // 글 수정
