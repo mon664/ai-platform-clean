@@ -1,36 +1,18 @@
-import Redis from 'ioredis';
+import { sql } from '@vercel/postgres';
 
-// Redis 클라이언트 초기화 (with error handling)
-let redis: Redis | null = null;
-
-try {
-  const redisUrl = process.env.REDIS_URL;
-  if (redisUrl && redisUrl.trim() !== '') {
-    redis = new Redis(redisUrl, {
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true
-    });
-
-    redis.on('error', (err) => {
-      console.error('Redis connection error:', err.message);
-      redis = null;
-    });
-  }
-} catch (error) {
-  console.error('Failed to initialize Redis:', error);
-  redis = null;
+// Postgres 클라이언트 초기화
+const postgresUrl = process.env.POSTGRES_URL;
+if (!postgresUrl) {
+  console.warn('POSTGRES_URL environment variable is not set');
 }
 
-// Fallback 메모리 저장소
-const memoryStorage: { [key: string]: string } = {};
-const blogList: string[] = [];
-
 export interface BlogPost {
+  id?: number;
   slug: string;
   title: string;
   content: string;
-  createdAt: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // 제목을 URL-safe slug로 변환
@@ -46,142 +28,123 @@ export function createSlug(title: string): string {
 // 글 생성
 export async function createPost(title: string, content: string): Promise<BlogPost> {
   const slug = createSlug(title);
-  const post: BlogPost = {
-    slug,
-    title,
-    content,
-    createdAt: new Date().toISOString(),
-  };
 
-  // Redis 또는 메모리에 포스트 저장
   try {
-    if (redis) {
-      await redis.set(`blog:${slug}`, JSON.stringify(post));
-      await redis.lpush('blog:list', slug);
-    } else {
-      memoryStorage[`blog:${slug}`] = JSON.stringify(post);
-      blogList.unshift(slug);
-    }
-  } catch (error) {
-    console.error('Failed to save post:', error);
-    // Fallback to memory storage
-    memoryStorage[`blog:${slug}`] = JSON.stringify(post);
-    blogList.unshift(slug);
-  }
+    const result = await sql`
+      INSERT INTO blog_posts (slug, title, content)
+      VALUES (${slug}, ${title}, ${content})
+      RETURNING id, slug, title, content, created_at, updated_at
+    `;
 
-  return post;
+    if (result.rows.length > 0) {
+      return result.rows[0] as BlogPost;
+    }
+
+    throw new Error('Failed to create blog post');
+  } catch (error) {
+    console.error('Failed to create post:', error);
+    throw error;
+  }
 }
 
 // 글 목록 조회
 export async function listPosts(): Promise<BlogPost[]> {
   try {
-    if (redis) {
-      // Redis에서 포스트 slug 목록 조회
-      const slugs = await redis.lrange('blog:list', 0, -1);
+    const result = await sql`
+      SELECT id, slug, title, content, created_at, updated_at
+      FROM blog_posts
+      ORDER BY created_at DESC
+    `;
 
-      if (!slugs || slugs.length === 0) {
-        return [];
-      }
-
-      // 각 slug에 대한 포스트 조회
-      const posts: BlogPost[] = [];
-      for (const slug of slugs) {
-        const postJson = await redis.get(`blog:${slug}`);
-        if (postJson) {
-          const post = JSON.parse(postJson) as BlogPost;
-          posts.push(post);
-        }
-      }
-
-      // 최신순 정렬
-      return posts.sort((a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-    } else {
-      // 메모리 저장소에서 조회
-      const posts: BlogPost[] = [];
-      for (const slug of blogList) {
-        const postJson = memoryStorage[`blog:${slug}`];
-        if (postJson) {
-          const post = JSON.parse(postJson) as BlogPost;
-          posts.push(post);
-        }
-      }
-      return posts;
-    }
+    return result.rows as BlogPost[];
   } catch (error) {
     console.error('Failed to list posts:', error);
-    // Fallback to memory storage
-    const posts: BlogPost[] = [];
-    for (const slug of blogList) {
-      const postJson = memoryStorage[`blog:${slug}`];
-      if (postJson) {
-        const post = JSON.parse(postJson) as BlogPost;
-        posts.push(post);
-      }
-    }
-    return posts;
+    throw error;
   }
 }
 
 // 특정 글 조회
 export async function getPost(slug: string): Promise<BlogPost | null> {
   try {
-    if (redis) {
-      const postJson = await redis.get(`blog:${slug}`);
-      if (!postJson) {
-        return null;
-      }
-      return JSON.parse(postJson) as BlogPost;
-    } else {
-      const postJson = memoryStorage[`blog:${slug}`];
-      if (!postJson) {
-        return null;
-      }
-      return JSON.parse(postJson) as BlogPost;
+    const result = await sql`
+      SELECT id, slug, title, content, created_at, updated_at
+      FROM blog_posts
+      WHERE slug = ${slug}
+    `;
+
+    if (result.rows.length > 0) {
+      return result.rows[0] as BlogPost;
     }
+
+    return null;
   } catch (error) {
     console.error('Failed to get post:', error);
-    // Fallback to memory storage
-    const postJson = memoryStorage[`blog:${slug}`];
-    if (!postJson) {
-      return null;
-    }
-    return JSON.parse(postJson) as BlogPost;
+    throw error;
   }
 }
 
 // 글 수정
 export async function updatePost(slug: string, title: string, content: string): Promise<BlogPost | null> {
-  const existingPost = await getPost(slug);
+  try {
+    const result = await sql`
+      UPDATE blog_posts
+      SET title = ${title}, content = ${content}, updated_at = NOW()
+      WHERE slug = ${slug}
+      RETURNING id, slug, title, content, created_at, updated_at
+    `;
 
-  if (!existingPost) {
+    if (result.rows.length > 0) {
+      return result.rows[0] as BlogPost;
+    }
+
     return null;
+  } catch (error) {
+    console.error('Failed to update post:', error);
+    throw error;
   }
-
-  const updatedPost: BlogPost = {
-    ...existingPost,
-    title,
-    content,
-  };
-
-  await redis.set(`blog:${slug}`, JSON.stringify(updatedPost));
-  return updatedPost;
 }
 
 // 글 삭제
 export async function deletePost(slug: string): Promise<boolean> {
-  const post = await getPost(slug);
+  try {
+    const result = await sql`
+      DELETE FROM blog_posts WHERE slug = ${slug}
+    `;
 
-  if (!post) {
-    return false;
+    return result.rowCount > 0;
+  } catch (error) {
+    console.error('Failed to delete post:', error);
+    throw error;
   }
+}
 
-  // 포스트 삭제
-  await redis.del(`blog:${slug}`);
+// Initialize database tables
+export async function initializeDatabase() {
+  try {
+    // Create blog_posts table if it doesn't exist
+    await sql`
+      CREATE TABLE IF NOT EXISTS blog_posts (
+        id SERIAL PRIMARY KEY,
+        slug VARCHAR(255) UNIQUE NOT NULL,
+        title VARCHAR(500) NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
 
-  // 목록에서 slug 제거
-  await redis.lrem('blog:list', 1, slug);
+    // Create indexes
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON blog_posts(slug)
+    `;
 
-  return true;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_blog_posts_created_at ON blog_posts(created_at DESC)
+    `;
+
+    console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize database:', error);
+    throw error;
+  }
 }

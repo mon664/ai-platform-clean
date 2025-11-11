@@ -15,7 +15,7 @@ export interface Topic {
 }
 
 export async function generateTopics(count: number): Promise<Topic[]> {
-  // TODO: Pull recent 30-day topics from Redis to avoid duplicates
+  // TODO: Pull recent 30-day topics from Postgres to avoid duplicates
   // TODO: Rotate categories across invocations
   // TODO: Call Gemini API with TOPIC_GENERATION_PROMPT
   // Temporary stub: return a deterministic topic for wiring
