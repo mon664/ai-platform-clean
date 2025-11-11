@@ -1,7 +1,8 @@
-import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
 export default function Home() {
-  const features = [
+  redirect('/admin/login')
+}
     {
       title: '자동 블로그',
       description: 'AI가 자동으로 블로그 포스트를 생성합니다',
