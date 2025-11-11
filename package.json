@@ -2,6 +2,10 @@
   "name": "ai-platform-clean",
   "version": "0.1.0",
   "private": true,
+  "overrides": {
+    "ioredis": "npm:empty-module@1.0.0",
+    "redis": "npm:empty-module@1.0.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
