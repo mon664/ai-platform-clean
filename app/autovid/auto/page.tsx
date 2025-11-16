@@ -30,7 +30,7 @@ export default function AutoVideoPage() {
     status: 'idle'
   });
 
-  const generateVideo = async () => {
+  const generateContent = async () => {
     if (!subject.trim()) {
       alert('주제를 입력해주세요');
       return;
@@ -83,7 +83,7 @@ export default function AutoVideoPage() {
     setResult(prev => ({ ...prev, status: 'generating' }));
 
     try {
-      const imagePromises = result.scenes.map(scene =>
+      const imagePromises = result.scenes.map((scene, index) =>
         fetch('/api/autovid/generate-image', {
           method: 'POST',
           headers: {
@@ -91,13 +91,23 @@ export default function AutoVideoPage() {
           },
           body: JSON.stringify({
             prompt: scene.imageGenPrompt,
-            style: 'cinematic'
+            style: 'cinematic',
+            aspectRatio: '16:9'
           }),
-        }).then(res => res.json())
+        }).then(res => {
+          if (!res.ok) {
+            throw new Error(`Scene ${index + 1} 이미지 생성 실패`);
+          }
+          return res.json();
+        })
       );
 
       const imageResponses = await Promise.all(imagePromises);
-      const images = imageResponses.map(res => res.imageUrl);
+      const images = imageResponses.map(res => res.imageUrl).filter(Boolean);
+
+      if (images.length === 0) {
+        throw new Error('생성된 이미지가 없습니다');
+      }
 
       setResult(prev => ({
         ...prev,
@@ -110,6 +120,81 @@ export default function AutoVideoPage() {
         status: 'error',
         error: '이미지 생성 중 오류 발생: ' + error.message
       }));
+    }
+  };
+
+  const generateVideo = async () => {
+    if (result.images.length === 0 || result.status !== 'completed') {
+      alert('먼저 이미지를 생성해주세요');
+      return;
+    }
+
+    try {
+      // Video creation logic (placeholder for now)
+      const videoData = {
+        title: result.title,
+        script: result.script,
+        images: result.images,
+        scenes: result.scenes
+      };
+
+      // Create a simple video file download (JSON format for now)
+      const blob = new Blob([JSON.stringify(videoData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${result.title.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_video_data.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      alert('비디오 데이터가 다운로드되었습니다!');
+    } catch (error: any) {
+      alert('영상 생성 중 오류 발생: ' + error.message);
+    }
+  };
+
+  const downloadScript = () => {
+    try {
+      const scriptData = {
+        title: result.title,
+        script: result.script,
+        scenes: result.scenes,
+        generatedAt: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(scriptData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${result.title.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_script.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      alert('스크립트가 다운로드되었습니다!');
+    } catch (error: any) {
+      alert('스크립트 다운로드 중 오류 발생: ' + error.message);
+    }
+  };
+
+  const downloadImages = () => {
+    try {
+      result.images.forEach((imageUrl, index) => {
+        // Create a temporary link element for each image
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.download = `scene_${index + 1}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+
+      alert('이미지 다운로드가 시작되었습니다!');
+    } catch (error: any) {
+      alert('이미지 다운로드 중 오류 발생: ' + error.message);
     }
   };
 
@@ -201,23 +286,54 @@ export default function AutoVideoPage() {
         </div>
 
         {/* 생성 버튼 */}
-        <div className="flex gap-4 mt-6">
-          <button
-            onClick={generateVideo}
-            disabled={result.status === 'generating'}
-            className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-3 px-6 rounded-lg hover:from-orange-600 hover:to-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105"
-          >
-            {result.status === 'generating' ? '⏳ 생성 중...' : '🚀 영상 생성하기'}
-          </button>
-
-          {result.status === 'completed' && result.images.length === 0 && includeImages && (
+        <div className="flex flex-col gap-4 mt-6">
+          <div className="flex gap-4">
             <button
-              onClick={generateImages}
+              onClick={generateContent}
               disabled={result.status === 'generating'}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-3 px-6 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all transform hover:scale-105"
+              className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-3 px-6 rounded-lg hover:from-orange-600 hover:to-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105"
             >
-              🎨 이미지 생성
+              {result.status === 'generating' ? '⏳ 생성 중...' : '🚀 영상 콘텐츠 생성'}
             </button>
+
+            {result.status === 'completed' && result.images.length === 0 && includeImages && (
+              <button
+                onClick={generateImages}
+                disabled={result.status === 'generating'}
+                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-3 px-6 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all transform hover:scale-105"
+              >
+                🎨 이미지 생성
+              </button>
+            )}
+          </div>
+
+          {/* 다운로드 버튼 */}
+          {result.status === 'completed' && (
+            <div className="flex gap-3 p-4 bg-white/5 rounded-lg border border-white/10">
+              <span className="text-white font-medium self-center">📥 다운로드:</span>
+              <button
+                onClick={downloadScript}
+                className="bg-gradient-to-r from-green-500 to-teal-500 text-white font-medium py-2 px-4 rounded-lg hover:from-green-600 hover:to-teal-600 transition-all text-sm"
+              >
+                📄 스크립트
+              </button>
+              {result.images.length > 0 && (
+                <button
+                  onClick={downloadImages}
+                  className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium py-2 px-4 rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all text-sm"
+                >
+                  🖼️ 이미지
+                </button>
+              )}
+              {result.images.length > 0 && (
+                <button
+                  onClick={generateVideo}
+                  className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-medium py-2 px-4 rounded-lg hover:from-red-600 hover:to-pink-600 transition-all text-sm"
+                >
+                  🎬 영상 데이터
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
