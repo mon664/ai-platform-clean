@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (!auth.authorized) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
-  }
 
   try {
     const contentType = req.headers.get('content-type') || ''

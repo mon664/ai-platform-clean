@@ -25,7 +25,15 @@ export async function POST(req: NextRequest) {
               {
                 text: `Generate a high-quality character image: ${prompt}.
                        Create a professional, detailed portrait with good lighting and composition.
-                       The image should be suitable for YouTube thumbnails and story generation.`
+                       The image should be suitable for YouTube thumbnails and story generation.
+
+                       IMPORTANT RULES:
+                       - NO TEXT, WORDS, LETTERS, or NUMBERS in the image
+                       - NO WATERMARKS or SIGNATURES
+                       - NO TITLES or CAPTIONS
+                       - PURE VISUAL CHARACTER PORTRAIT ONLY
+                       - AVOID any written elements entirely
+                       - Make it completely text-free
               }
             ]
           }],
