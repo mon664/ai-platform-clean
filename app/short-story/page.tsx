@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, DragEvent } from 'react'
 import Navigation from '../components/Navigation'
-import { fetchWithAuth } from '@/lib/client-auth'
 
 // --- Interfaces ---
 interface Scene {
@@ -209,7 +208,7 @@ export default function ShortStoryPage() {
     }, 1500);
 
     try {
-      const res = await fetchWithAuth('/api/short-story', {
+      const res = await fetch('/api/short-story', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic, targetAudience }),
@@ -234,7 +233,7 @@ export default function ShortStoryPage() {
     if (!result) return;
     setIsUploading(true); setUploadStatus('');
     try {
-      const res = await fetchWithAuth('/api/short-story/assemble-and-upload', {
+      const res = await fetch('/api/short-story/assemble-and-upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storyData: result, youtubeAccountId: selectedYoutubeAccount }),

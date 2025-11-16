@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AI Platform - 통합 AI 서비스",
   description: "블로그 자동 생성, AI 챗봇, 콘텐츠 제작 등 다양한 AI 기능을 제공합니다",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({

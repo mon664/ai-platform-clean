@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   const auth = requireAuth(req);

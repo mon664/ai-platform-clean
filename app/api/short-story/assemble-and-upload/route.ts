@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { requireAuth } from '@/lib/auth';
 
 // This interface represents the data sent from the frontend.
 interface UploadRequest {
@@ -65,11 +64,6 @@ async function saveTokensToDB(accountId: string, tokens: any): Promise<void> {
  */
 export async function POST(req: NextRequest) {
   try {
-    const auth = requireAuth(req);
-    if (!auth.authorized) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
-    }
-
     const { storyData, youtubeAccountId }: UploadRequest = await req.json();
 
     if (!storyData || !youtubeAccountId) {

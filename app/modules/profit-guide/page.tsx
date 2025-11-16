@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import Navigation from '@/app/components/Navigation';
-import { fetchWithAuth } from '@/lib/client-auth';
 
 export default function ProfitGuidePage() {
   const [postContent, setPostContent] = useState('오늘의 AI 추천 썰: 친구랑 해외여행 갔다가 생긴 대박 웃긴 썰! #AI #유머 #썰');
@@ -12,7 +11,7 @@ export default function ProfitGuidePage() {
     setIsUploading(true);
     setUploadStatus('');
     try {
-      const res = await fetchWithAuth('/api/profit-guide/community-upload', {
+      const res = await fetch('/api/profit-guide/community-upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: postContent }),

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   // Handle CORS preflight request
@@ -12,11 +11,6 @@ export async function POST(req: NextRequest) {
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     });
-  }
-  // 인증 확인
-  const auth = requireAuth(req);
-  if (!auth.authorized) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
   }
 
   try {

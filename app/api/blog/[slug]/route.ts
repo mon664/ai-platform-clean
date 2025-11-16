@@ -1,6 +1,5 @@
 import { getPost, updatePost, deletePost } from '@/lib/blog-storage';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
 
 export async function GET(
   request: Request,
@@ -32,11 +31,6 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
-  const auth = requireAuth(request);
-  if (!auth.authorized) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
-  }
-
   try {
     const { slug } = params;
     const { title, content } = await request.json();
@@ -76,11 +70,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
-  const auth = requireAuth(request);
-  if (!auth.authorized) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
-  }
-
   try {
     const { slug } = params;
     const success = await deletePost(slug);

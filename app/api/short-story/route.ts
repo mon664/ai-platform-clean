@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
