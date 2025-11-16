@@ -27,6 +27,7 @@ export default function Navigation() {
         </Link>
 
         <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+          {/* 기존 메뉴들 */}
           <Link
             href="/"
             style={{
@@ -115,17 +116,17 @@ export default function Navigation() {
               transition: 'all 0.2s ease'
             }}
           >
-            👤 캐릭터 생성기
+            🧑 캐릭터 생성기
           </Link>
           <Link
             href="/tts"
             style={{
-              color: pathname.startsWith('/tts') ? '#10b981' : '#9ca3af',
+              color: pathname.startsWith('/tts') ? '#06b6d4' : '#9ca3af',
               textDecoration: 'none',
               fontWeight: pathname.startsWith('/tts') ? 'bold' : 'normal',
               padding: '0.4rem 0.8rem',
               borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/tts') ? '#047857' : 'transparent',
+              backgroundColor: pathname.startsWith('/tts') ? '#0891b2' : 'transparent',
               fontSize: '13px',
               transition: 'all 0.2s ease'
             }}
@@ -133,50 +134,64 @@ export default function Navigation() {
             🔊 TTS 생성기
           </Link>
           <Link
-            href="/chat"
+            href="/short-story"
             style={{
-              color: pathname.startsWith('/chat') ? '#3b82f6' : '#9ca3af',
+              color: pathname.startsWith('/short-story') ? '#f59e0b' : '#9ca3af',
               textDecoration: 'none',
-              fontWeight: pathname.startsWith('/chat') ? 'bold' : 'normal',
+              fontWeight: pathname.startsWith('/short-story') ? 'bold' : 'normal',
               padding: '0.4rem 0.8rem',
               borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/chat') ? '#1d4ed8' : 'transparent',
+              backgroundColor: pathname.startsWith('/short-story') ? '#d97706' : 'transparent',
               fontSize: '13px',
               transition: 'all 0.2s ease'
             }}
           >
-            🤖 AI 채팅
+            📱 썰 쇼츠
           </Link>
-          <Link
-            href="/modules/bom"
-            style={{
-              color: pathname.startsWith('/modules/bom') ? '#10b981' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/modules/bom') ? 'bold' : 'normal',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/modules/bom') ? '#064e3b' : 'transparent',
-              fontSize: '13px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            💰 BOM
-          </Link>
-          <Link
-            href="/modules/haccp"
-            style={{
-              color: pathname.startsWith('/modules/haccp') ? '#ef4444' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/modules/haccp') ? 'bold' : 'normal',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/modules/haccp') ? '#7f1d1d' : 'transparent',
-              fontSize: '13px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            🔬 HACCP
-          </Link>
+
+          {/* 🆕 AutoVid 메뉴 */}
+          <div style={{
+            display: 'inline-flex',
+            gap: '0.8rem',
+            padding: '0.4rem',
+            borderRadius: '0.5rem',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            position: 'relative'
+          }}>
+            <span style={{
+              position: 'absolute',
+              top: '-8px',
+              left: '8px',
+              background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+              color: 'white',
+              fontSize: '10px',
+              fontWeight: 'bold',
+              padding: '2px 6px',
+              borderRadius: '10px',
+              whiteSpace: 'nowrap'
+            }}>
+              NEW
+            </span>
+            <Link
+              href="/autovid/auto"
+              style={{
+                color: pathname.startsWith('/autovid') ? '#f97316' : '#f97316',
+                textDecoration: 'none',
+                fontWeight: pathname.startsWith('/autovid') ? 'bold' : 'normal',
+                padding: '0.4rem 0.8rem',
+                borderRadius: '0.5rem',
+                backgroundColor: pathname.startsWith('/autovid/auto') ? '#c2410c' : 'transparent',
+                fontSize: '13px',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem'
+              }}
+            >
+              🔥 자동영상생성
+            </Link>
+          </div>
         </div>
       </div>
     </nav>
