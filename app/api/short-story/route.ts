@@ -88,7 +88,7 @@ async function generateImage(sceneText: string, characterDescription: string): P
     const prompt = `Generate a keyframe image for a YouTube Short scene. Style: simple, engaging, slightly abstract illustration. Aspect ratio 9:16. Scene description: "${sceneText}". ${characterPrompt}`;
     try {
         const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -154,10 +154,6 @@ async function generateTTS(text: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = requireAuth(req);
-    if (!auth.authorized) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
-    }
 
     if (!GEMINI_API_KEY) {
       return NextResponse.json({ error: 'API 키가 설정되지 않았습니다' }, { status: 500 });

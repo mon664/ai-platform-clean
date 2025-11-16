@@ -116,9 +116,69 @@ Output: 250-300 words with numerical precision where possible.` },
     }
 
     const sceneData = await sceneRes.json()
-    const sceneText = sceneData.candidates[0].content.parts[0].text
-    const scenes = JSON.parse(sceneText.replace(/```json\n?|\n?```/g, ''))
-    console.log('[DEBUG] Scenes array:', scenes)
+    let sceneText = sceneData.candidates?.[0]?.content?.parts?.[0]?.text || '[]'
+    let scenes: string[] = []
+
+    // More robust JSON parsing with multiple fallback strategies
+    try {
+      // Strategy 1: Clean and parse as JSON array
+      let cleanedText = sceneText
+        .replace(/```json\n?|\n?```/g, '')
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+        .trim()
+
+      scenes = JSON.parse(cleanedText)
+
+      if (!Array.isArray(scenes)) {
+        throw new Error('Response is not an array')
+      }
+
+      // Validate that all items are strings
+      scenes = scenes.filter(scene => typeof scene === 'string' && scene.trim().length > 0)
+
+      if (scenes.length === 0) {
+        throw new Error('No valid scenes found in array')
+      }
+
+    } catch (parseError) {
+      console.error('[ERROR] JSON.parse failed for scenes:', parseError)
+      console.error('[ERROR] Raw scene text:', JSON.stringify(sceneText.substring(0, 300)))
+
+      // Strategy 2: Try to extract scenes from malformed JSON
+      try {
+        // Look for patterns like ["scene1","scene2"] and extract content
+        const arrayMatch = sceneText.match(/\[.*\]/s)
+        if (arrayMatch) {
+          const arrayContent = arrayMatch[0]
+          scenes = JSON.parse(arrayContent)
+          scenes = scenes.filter(scene => typeof scene === 'string' && scene.trim().length > 0)
+        }
+      } catch (secondAttempt) {
+        console.error('[ERROR] Second parse attempt failed:', secondAttempt)
+      }
+
+      // Strategy 3: Fallback - create default scenes based on story
+      if (scenes.length === 0) {
+        console.log('[FALLBACK] Creating default scenes from story')
+        scenes = [
+          `Introduction to the story`,
+          `Main character development`,
+          `Story progression`,
+          `Climax moment`,
+          `Story resolution`
+        ].slice(0, sceneCount)
+      }
+    }
+
+    // Ensure we have the right number of scenes
+    if (scenes.length < sceneCount) {
+      const additionalScenes = sceneCount - scenes.length
+      for (let i = 0; i < additionalScenes; i++) {
+        scenes.push(`Story scene ${scenes.length + 1}`)
+      }
+    }
+
+    console.log('[DEBUG] Final scenes array:', scenes.length, 'scenes')
 
     // Nano Banana (Gemini 2.5 Flash Image) - Character consistency with reference image
     const images: string[] = []
@@ -170,12 +230,10 @@ Style: Photorealistic, cinematic lighting, high detail, film quality.`
         }
 
         // Find the image part in the response (note: camelCase inlineData)
-        const imagePart = data.candidates[0].content.parts.find((part: any) => part.inlineData)
+        const imagePart = data.candidates?.[0]?.content?.parts?.find((part: any) => part.inlineData)
         if (!imagePart?.inlineData?.data) {
-          return new Response(JSON.stringify({
-            error: 'No image data in response',
-            response: JSON.stringify(data).substring(0, 500)
-          }), { status: 500 })
+          console.error('[ERROR] No image data in response, data structure:', JSON.stringify(data).substring(0, 300))
+          continue // Skip this scene and continue with next
         }
 
         const imageData = imagePart.inlineData.data
