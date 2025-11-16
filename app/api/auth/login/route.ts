@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdmin, generateToken } from '@/lib/auth';
+import { verifyAdmin, generateToken, verifyToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,26 +58,88 @@ export async function POST(request: NextRequest) {
 // GET 요청 - 현재 로그인 상태 확인
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('auth-token')?.value;
+    // OPTIONS 요청 처리
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
+    }
 
-    if (!token) {
+    // Vercel SSO 토큰 확인 및 무시
+    const authToken = request.cookies.get('auth-token')?.value;
+    const vercelJwt = request.cookies.get('_vercel_jwt')?.value;
+
+    // Vercel JWT가 있으면 무시하고 false 반환
+    if (vercelJwt && !authToken) {
       return NextResponse.json(
-        { authenticated: false, error: '토큰이 없습니다.' },
-        { status: 401 }
+        { authenticated: false },
+        {
+          status: 200,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+          }
+        }
       );
     }
 
-    // 토큰 검증은 미들웨어나 다른 API에서 처리
+    if (!authToken) {
+      return NextResponse.json(
+        { authenticated: false },
+        {
+          status: 200,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+          }
+        }
+      );
+    }
+
+    // 토큰 실제 검증
+    const decoded = verifyToken(authToken);
+
+    if (!decoded) {
+      return NextResponse.json(
+        { authenticated: false },
+        {
+          status: 200,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+          }
+        }
+      );
+    }
+
     return NextResponse.json({
       authenticated: true,
-      message: '로그인 상태입니다.'
+      user: {
+        email: decoded.email
+      }
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      }
     });
 
   } catch (error) {
     console.error('Login status check error:', error);
     return NextResponse.json(
-      { error: '서버 오류가 발생했습니다.' },
-      { status: 500 }
+      { authenticated: false },
+      {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        }
+      }
     );
   }
 }

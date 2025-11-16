@@ -24,10 +24,8 @@ export default function AdminLogin() {
           const data = await response.json();
           if (data.authenticated) {
             setIsAuthenticated(true);
-            // 1초 후 대시보드로 리다이렉트
-            setTimeout(() => {
-              router.push('/admin');
-            }, 1000);
+            // 즉시 대시보드로 리다이렉트
+            router.push('/admin');
           }
         }
       } catch (error) {
@@ -56,18 +54,20 @@ export default function AdminLogin() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // 로그인 성공
+        // 로그인 성공 - localStorage 저장
         localStorage.setItem('auth-token', data.token);
         localStorage.setItem('user-info', JSON.stringify(data.user));
-        router.push('/admin');
+
+        // 완전한 페이지 전환 (window.location.href 사용)
+        window.location.href = '/admin';
       } else {
         // 로그인 실패
         setError(data.error || '로그인에 실패했습니다.');
+        setLoading(false);
       }
     } catch (error) {
       console.error('Login error:', error);
       setError('서버 오류가 발생했습니다. 다시 시도해주세요.');
-    } finally {
       setLoading(false);
     }
   };

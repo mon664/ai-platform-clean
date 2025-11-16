@@ -17,30 +17,43 @@ export default function AdminDashboard() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // 먼저 localStorage 확인
+        const authToken = localStorage.getItem('auth-token');
+        
+        if (!authToken) {
+          // 토큰이 없으면 바로 로그인 페이지로
+          window.location.href = '/admin/login';
+          return;
+        }
+
+        // 서버에 인증 상태 확인
         const response = await fetch('/api/auth/login', {
           method: 'GET',
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
         });
 
-        if (!response.ok) {
-          // 인증되지 않은 경우 로그인 페이지로 리다이렉트
-          router.push('/admin/login');
-          return;
-        }
-
         const data = await response.json();
+        
         if (!data.authenticated) {
-          router.push('/admin/login');
+          // 인증 실패 - localStorage 정리하고 로그인 페이지로
+          localStorage.removeItem('auth-token');
+          localStorage.removeItem('user-info');
+          window.location.href = '/admin/login';
           return;
         }
 
-        // 로컬 스토리지에서 사용자 정보 가져오기
+        // 인증 성공 - 사용자 정보 설정
         const userInfo = localStorage.getItem('user-info');
         if (userInfo) {
           setUser(JSON.parse(userInfo));
+        } else {
+          setUser(data.user);
         }
 
-        // 기본 통계 데이터 설정 (실제로는 API에서 가져와야 함)
+        // 기본 통계 데이터 설정
         setStats({
           totalPosts: 12,
           totalUsers: 3,
@@ -52,34 +65,37 @@ export default function AdminDashboard() {
           ]
         });
 
+        setLoading(false);
+
       } catch (error) {
         console.error('Auth check failed:', error);
-        router.push('/admin/login');
-      } finally {
-        setLoading(false);
+        localStorage.removeItem('auth-token');
+        localStorage.removeItem('user-info');
+        window.location.href = '/admin/login';
       }
     };
 
     checkAuth();
-  }, [router]);
+  }, []);
 
   const handleLogout = async () => {
     try {
-      // 클라이언트 측 로그아웃 처리
+      // localStorage 정리
       localStorage.removeItem('auth-token');
       localStorage.removeItem('user-info');
 
-      // 서버에 로그아웃 요청 (선택사항)
+      // 서버에 로그아웃 요청 (쿠키 삭제)
       await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       });
 
-      router.push('/admin/login');
+      // 완전한 페이지 전환
+      window.location.href = '/admin/login';
     } catch (error) {
       console.error('Logout error:', error);
       // 에러가 발생해도 로그아웃 처리
-      router.push('/admin/login');
+      window.location.href = '/admin/login';
     }
   };
 
