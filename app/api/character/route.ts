@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
                        - NO TITLES or CAPTIONS
                        - PURE VISUAL CHARACTER PORTRAIT ONLY
                        - AVOID any written elements entirely
-                       - Make it completely text-free
+                       - Make it completely text-free`
               }
             ]
           }],
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const mimeType = imagePart.inlineData.mimeType || 'image/png'
 
     // Base64 이미지를 data URL로 반환
-    const imageUrl = `data:${mimeType};base64,${imageData}`
+    const imageUrl = 'data:' + mimeType + ';base64,' + imageData
 
     return NextResponse.json({ imageUrl })
 

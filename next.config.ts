@@ -7,10 +7,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    // Vercel Protection 비활성화
-    protectAssets: false,
-  },
+  // experimental 옵션 제거 (Next.js 15.5.2 호환성)
   async headers() {
     return [
       {
