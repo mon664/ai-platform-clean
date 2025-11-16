@@ -26,81 +26,111 @@ export default function Navigation() {
           🏭 AI 스마트 팩토리 ERP
         </Link>
 
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
           <Link
             href="/"
             style={{
               color: pathname === '/' ? '#4ade80' : '#9ca3af',
               textDecoration: 'none',
               fontWeight: pathname === '/' ? 'bold' : 'normal',
-              padding: '0.5rem 1rem',
+              padding: '0.4rem 0.8rem',
               borderRadius: '0.5rem',
               backgroundColor: pathname === '/' ? '#064e3b' : 'transparent',
-              fontSize: '14px',
+              fontSize: '13px',
               transition: 'all 0.2s ease'
             }}
           >
             🏠 대시보드
           </Link>
           <Link
+            href="/blog"
+            style={{
+              color: pathname.startsWith('/blog') ? '#60a5fa' : '#9ca3af',
+              textDecoration: 'none',
+              fontWeight: pathname.startsWith('/blog') ? 'bold' : 'normal',
+              padding: '0.4rem 0.8rem',
+              borderRadius: '0.5rem',
+              backgroundColor: pathname.startsWith('/blog') ? '#1e3a8a' : 'transparent',
+              fontSize: '13px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            📝 블로그
+          </Link>
+          <Link
+            href="/shorts"
+            style={{
+              color: pathname.startsWith('/shorts') ? '#ec4899' : '#9ca3af',
+              textDecoration: 'none',
+              fontWeight: pathname.startsWith('/shorts') ? 'bold' : 'normal',
+              padding: '0.4rem 0.8rem',
+              borderRadius: '0.5rem',
+              backgroundColor: pathname.startsWith('/shorts') ? '#be185d' : 'transparent',
+              fontSize: '13px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            🎬 쇼츠 생성기
+          </Link>
+          <Link
+            href="/story"
+            style={{
+              color: pathname.startsWith('/story') ? '#f97316' : '#9ca3af',
+              textDecoration: 'none',
+              fontWeight: pathname.startsWith('/story') ? 'bold' : 'normal',
+              padding: '0.4rem 0.8rem',
+              borderRadius: '0.5rem',
+              backgroundColor: pathname.startsWith('/story') ? '#c2410c' : 'transparent',
+              fontSize: '13px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            🎭 장면 생성기
+          </Link>
+          <Link
+            href="/character"
+            style={{
+              color: pathname.startsWith('/character') ? '#a855f7' : '#9ca3af',
+              textDecoration: 'none',
+              fontWeight: pathname.startsWith('/character') ? 'bold' : 'normal',
+              padding: '0.4rem 0.8rem',
+              borderRadius: '0.5rem',
+              backgroundColor: pathname.startsWith('/character') ? '#7c3aed' : 'transparent',
+              fontSize: '13px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            👤 캐릭터 생성기
+          </Link>
+          <Link
+            href="/tts"
+            style={{
+              color: pathname.startsWith('/tts') ? '#10b981' : '#9ca3af',
+              textDecoration: 'none',
+              fontWeight: pathname.startsWith('/tts') ? 'bold' : 'normal',
+              padding: '0.4rem 0.8rem',
+              borderRadius: '0.5rem',
+              backgroundColor: pathname.startsWith('/tts') ? '#047857' : 'transparent',
+              fontSize: '13px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            🔊 TTS 생성기
+          </Link>
+          <Link
             href="/chat"
             style={{
-              color: pathname.startsWith('/chat') ? '#60a5fa' : '#9ca3af',
+              color: pathname.startsWith('/chat') ? '#3b82f6' : '#9ca3af',
               textDecoration: 'none',
               fontWeight: pathname.startsWith('/chat') ? 'bold' : 'normal',
-              padding: '0.5rem 1rem',
+              padding: '0.4rem 0.8rem',
               borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/chat') ? '#1e3a8a' : 'transparent',
-              fontSize: '14px',
+              backgroundColor: pathname.startsWith('/chat') ? '#1d4ed8' : 'transparent',
+              fontSize: '13px',
               transition: 'all 0.2s ease'
             }}
           >
             🤖 AI 채팅
-          </Link>
-          <Link
-            href="/modules/purchase-input"
-            style={{
-              color: pathname.startsWith('/modules/purchase-input') ? '#f59e0b' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/modules/purchase-input') ? 'bold' : 'normal',
-              padding: '0.5rem 1rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/modules/purchase-input') ? '#78350f' : 'transparent',
-              fontSize: '14px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            📋 구매입력
-          </Link>
-          <Link
-            href="/ecount/purchase"
-            style={{
-              color: pathname.startsWith('/ecount/purchase') ? '#f59e0b' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/ecount/purchase') ? 'bold' : 'normal',
-              padding: '0.5rem 1rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/ecount/purchase') ? '#78350f' : 'transparent',
-              fontSize: '14px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            📸 이카운트
-          </Link>
-          <Link
-            href="/modules/production-log"
-            style={{
-              color: pathname.startsWith('/modules/production-log') ? '#10b981' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/modules/production-log') ? 'bold' : 'normal',
-              padding: '0.5rem 1rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/modules/production-log') ? '#064e3b' : 'transparent',
-              fontSize: '14px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            📊 생산일지
           </Link>
           <Link
             href="/modules/bom"
@@ -108,10 +138,10 @@ export default function Navigation() {
               color: pathname.startsWith('/modules/bom') ? '#10b981' : '#9ca3af',
               textDecoration: 'none',
               fontWeight: pathname.startsWith('/modules/bom') ? 'bold' : 'normal',
-              padding: '0.5rem 1rem',
+              padding: '0.4rem 0.8rem',
               borderRadius: '0.5rem',
               backgroundColor: pathname.startsWith('/modules/bom') ? '#064e3b' : 'transparent',
-              fontSize: '14px',
+              fontSize: '13px',
               transition: 'all 0.2s ease'
             }}
           >
@@ -123,29 +153,14 @@ export default function Navigation() {
               color: pathname.startsWith('/modules/haccp') ? '#ef4444' : '#9ca3af',
               textDecoration: 'none',
               fontWeight: pathname.startsWith('/modules/haccp') ? 'bold' : 'normal',
-              padding: '0.5rem 1rem',
+              padding: '0.4rem 0.8rem',
               borderRadius: '0.5rem',
               backgroundColor: pathname.startsWith('/modules/haccp') ? '#7f1d1d' : 'transparent',
-              fontSize: '14px',
+              fontSize: '13px',
               transition: 'all 0.2s ease'
             }}
           >
             🔬 HACCP
-          </Link>
-          <Link
-            href="/ai-cli"
-            style={{
-              color: pathname.startsWith('/ai-cli') ? '#4ade80' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/ai-cli') ? 'bold' : 'normal',
-              padding: '0.5rem 1rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/ai-cli') ? '#064e3b' : 'transparent',
-              fontSize: '14px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            ⚡ AI CLI
           </Link>
         </div>
       </div>
