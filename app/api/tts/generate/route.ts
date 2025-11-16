@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (!auth.authorized) {
-    return NextResponse.json({ error: auth.error }, { status: 401 });
-  }
-
   console.log('TTS API: Request received.');
   try {
     const { text, voice, speed, pitch, tone } = await req.json();
