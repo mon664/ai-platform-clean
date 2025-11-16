@@ -27,6 +27,20 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // FFmpeg.wasm을 위한 헤더
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'require-corp',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+        ],
+      },
     ];
   },
   webpack: (config, { isServer }) => {

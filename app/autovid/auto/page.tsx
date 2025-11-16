@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import VideoProcessor from '../../components/VideoProcessor';
 
 interface GenerationResult {
   title: string;
@@ -12,8 +13,10 @@ interface GenerationResult {
     imageGenPrompt: string;
   }[];
   images: string[];
-  status: 'idle' | 'generating' | 'completed' | 'error';
+  status: 'idle' | 'generating' | 'completed' | 'error' | 'processing';
   error?: string;
+  videoUrl?: string;
+  processingProgress?: number;
 }
 
 export default function AutoVideoPage() {
@@ -123,36 +126,45 @@ export default function AutoVideoPage() {
     }
   };
 
-  const generateVideo = async () => {
+  const handleVideoProcessing = () => {
     if (result.images.length === 0 || result.status !== 'completed') {
       alert('먼저 이미지를 생성해주세요');
       return;
     }
 
-    try {
-      // Video creation logic (placeholder for now)
-      const videoData = {
-        title: result.title,
-        script: result.script,
-        images: result.images,
-        scenes: result.scenes
-      };
+    setResult(prev => ({ ...prev, status: 'processing', processingProgress: 0 }));
+  };
 
-      // Create a simple video file download (JSON format for now)
-      const blob = new Blob([JSON.stringify(videoData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${result.title.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_video_data.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+  const handleVideoComplete = (videoUrl: string) => {
+    // 비디오 다운로드
+    const link = document.createElement('a');
+    link.href = videoUrl;
+    link.download = `${result.title.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.mp4`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-      alert('비디오 데이터가 다운로드되었습니다!');
-    } catch (error: any) {
-      alert('영상 생성 중 오류 발생: ' + error.message);
-    }
+    setResult(prev => ({
+      ...prev,
+      status: 'completed',
+      videoUrl,
+      processingProgress: 100
+    }));
+
+    alert('✅ 영상이 생성되었습니다! 다운로드가 시작됩니다.');
+  };
+
+  const handleVideoError = (error: string) => {
+    setResult(prev => ({
+      ...prev,
+      status: 'error',
+      error: '영상 생성 실패: ' + error
+    }));
+    alert('❌ ' + error);
+  };
+
+  const handleVideoProgress = (progress: number) => {
+    setResult(prev => ({ ...prev, processingProgress: progress }));
   };
 
   const downloadScript = () => {
@@ -327,10 +339,11 @@ export default function AutoVideoPage() {
               )}
               {result.images.length > 0 && (
                 <button
-                  onClick={generateVideo}
-                  className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-medium py-2 px-4 rounded-lg hover:from-red-600 hover:to-pink-600 transition-all text-sm"
+                  onClick={handleVideoProcessing}
+                  disabled={result.status === 'processing'}
+                  className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-medium py-2 px-4 rounded-lg hover:from-red-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm"
                 >
-                  🎬 영상 데이터
+                  {result.status === 'processing' ? '⏳ 영상 제작 중...' : '🎬 영상 생성 (FFmpeg.wasm)'}
                 </button>
               )}
             </div>
@@ -442,6 +455,45 @@ export default function AutoVideoPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* 영상 처리 섹션 */}
+          {result.status === 'processing' && (
+            <VideoProcessor
+              title={result.title}
+              images={result.images}
+              duration={5}
+              transition="fade"
+              onComplete={handleVideoComplete}
+              onError={handleVideoError}
+              onProgress={handleVideoProgress}
+            />
+          )}
+
+          {/* 생성된 영상 */}
+          {result.videoUrl && (
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+              <h3 className="text-xl font-bold text-white mb-6">🎬 생성된 영상</h3>
+              <div className="space-y-4">
+                <video
+                  src={result.videoUrl}
+                  controls
+                  className="w-full max-w-2xl mx-auto rounded-lg"
+                  style={{ maxHeight: '400px' }}
+                >
+                  Your browser does not support the video tag.
+                </video>
+                <div className="flex justify-center">
+                  <a
+                    href={result.videoUrl}
+                    download={`${result.title.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.mp4`}
+                    className="bg-gradient-to-r from-green-500 to-teal-500 text-white font-bold py-2 px-6 rounded-lg hover:from-green-600 hover:to-teal-600 transition-all"
+                  >
+                    📥 영상 다운로드
+                  </a>
+                </div>
               </div>
             </div>
           )}

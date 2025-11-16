@@ -2,9 +2,23 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 
 export default function Navigation() {
   const pathname = usePathname();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const menuItems = [
+    { href: '/', icon: '🏠', label: '대시보드', color: '#4ade80' },
+    { href: '/blog', icon: '📝', label: '블로그', color: '#60a5fa' },
+    { href: '/ai-blog', icon: '🤖', label: 'AI 블로그', color: '#10b981' },
+    { href: '/autovid/auto', icon: '🔥', label: '자동영상생성', color: '#f97316', badge: 'NEW' },
+    { href: '/shorts', icon: '🎬', label: '쇼츠', color: '#ec4899' },
+    { href: '/story', icon: '🎭', label: '장면', color: '#f97316' },
+    { href: '/character', icon: '🧑', label: '캐릭터', color: '#a855f7' },
+    { href: '/tts', icon: '🔊', label: 'TTS', color: '#06b6d4' },
+    { href: '/short-story', icon: '📱', label: '썰 쇼츠', color: '#f59e0b' },
+  ];
 
   return (
     <nav style={{
@@ -16,184 +30,164 @@ export default function Navigation() {
       zIndex: '50'
     }}>
       <div style={{
-        maxWidth: '1200px',
+        maxWidth: '1400px',
         margin: '0 auto',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <Link href="/" style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4ade80', textDecoration: 'none' }}>
-          🏭 AI 스마트 팩토리 ERP
+        <Link href="/" style={{ 
+          fontSize: '1.5rem', 
+          fontWeight: 'bold', 
+          color: '#4ade80', 
+          textDecoration: 'none',
+          whiteSpace: 'nowrap'
+        }}>
+          🏭 AI 플랫폼
         </Link>
 
-        <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-          {/* 기존 메뉴들 */}
-          <Link
-            href="/"
-            style={{
-              color: pathname === '/' ? '#4ade80' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname === '/' ? 'bold' : 'normal',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname === '/' ? '#064e3b' : 'transparent',
-              fontSize: '13px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            🏠 대시보드
-          </Link>
-          <Link
-            href="/blog"
-            style={{
-              color: pathname.startsWith('/blog') ? '#60a5fa' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/blog') ? 'bold' : 'normal',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/blog') ? '#1e3a8a' : 'transparent',
-              fontSize: '13px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            📝 블로그
-          </Link>
-          <Link
-            href="/ai-blog"
-            style={{
-              color: pathname === '/ai-blog' ? '#10b981' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname === '/ai-blog' ? 'bold' : 'normal',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname === '/ai-blog' ? '#047857' : 'transparent',
-              fontSize: '13px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            🤖 AI 블로그 생성
-          </Link>
-          <Link
-            href="/shorts"
-            style={{
-              color: pathname.startsWith('/shorts') ? '#ec4899' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/shorts') ? 'bold' : 'normal',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/shorts') ? '#be185d' : 'transparent',
-              fontSize: '13px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            🎬 쇼츠 생성기
-          </Link>
-          <Link
-            href="/story"
-            style={{
-              color: pathname.startsWith('/story') ? '#f97316' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/story') ? 'bold' : 'normal',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/story') ? '#c2410c' : 'transparent',
-              fontSize: '13px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            🎭 장면 생성기
-          </Link>
-          <Link
-            href="/character"
-            style={{
-              color: pathname.startsWith('/character') ? '#a855f7' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/character') ? 'bold' : 'normal',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/character') ? '#7c3aed' : 'transparent',
-              fontSize: '13px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            🧑 캐릭터 생성기
-          </Link>
-          <Link
-            href="/tts"
-            style={{
-              color: pathname.startsWith('/tts') ? '#06b6d4' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/tts') ? 'bold' : 'normal',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/tts') ? '#0891b2' : 'transparent',
-              fontSize: '13px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            🔊 TTS 생성기
-          </Link>
-          <Link
-            href="/short-story"
-            style={{
-              color: pathname.startsWith('/short-story') ? '#f59e0b' : '#9ca3af',
-              textDecoration: 'none',
-              fontWeight: pathname.startsWith('/short-story') ? 'bold' : 'normal',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '0.5rem',
-              backgroundColor: pathname.startsWith('/short-story') ? '#d97706' : 'transparent',
-              fontSize: '13px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            📱 썰 쇼츠
-          </Link>
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          style={{
+            display: 'none',
+            '@media (max-width: 1024px)': {
+              display: 'block'
+            },
+            background: 'none',
+            border: 'none',
+            color: '#9ca3af',
+            fontSize: '1.5rem',
+            cursor: 'pointer'
+          }}
+          className="mobile-menu-btn"
+        >
+          ☰
+        </button>
 
-          {/* 🆕 AutoVid 메뉴 */}
-          <div style={{
-            display: 'inline-flex',
-            gap: '0.8rem',
-            padding: '0.4rem',
-            borderRadius: '0.5rem',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            border: '1px solid rgba(59, 130, 246, 0.3)',
-            position: 'relative'
-          }}>
-            <span style={{
-              position: 'absolute',
-              top: '-8px',
-              left: '8px',
-              background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-              color: 'white',
-              fontSize: '10px',
-              fontWeight: 'bold',
-              padding: '2px 6px',
-              borderRadius: '10px',
-              whiteSpace: 'nowrap'
-            }}>
-              NEW
-            </span>
+        {/* Desktop Menu */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '0.5rem', 
+          flexWrap: 'wrap',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          flex: 1,
+          marginLeft: '1rem'
+        }} className="desktop-menu">
+          {menuItems.map((item) => (
             <Link
-              href="/autovid/auto"
+              key={item.href}
+              href={item.href}
               style={{
-                color: pathname.startsWith('/autovid') ? '#f97316' : '#f97316',
+                color: pathname.startsWith(item.href) && item.href !== '/' || pathname === item.href ? item.color : '#9ca3af',
                 textDecoration: 'none',
-                fontWeight: pathname.startsWith('/autovid') ? 'bold' : 'normal',
-                padding: '0.4rem 0.8rem',
+                fontWeight: (pathname.startsWith(item.href) && item.href !== '/' || pathname === item.href) ? 'bold' : 'normal',
+                padding: '0.5rem 0.8rem',
                 borderRadius: '0.5rem',
-                backgroundColor: pathname.startsWith('/autovid/auto') ? '#c2410c' : 'transparent',
+                backgroundColor: (pathname.startsWith(item.href) && item.href !== '/' || pathname === item.href) ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
                 fontSize: '13px',
                 transition: 'all 0.2s ease',
-                display: 'flex',
+                position: 'relative',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.3rem'
+                gap: '0.3rem',
+                whiteSpace: 'nowrap'
               }}
             >
-              🔥 자동영상생성
+              {item.badge && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: '-6px',
+                  background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+                  color: 'white',
+                  fontSize: '9px',
+                  fontWeight: 'bold',
+                  padding: '2px 5px',
+                  borderRadius: '10px',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {item.badge}
+                </span>
+              )}
+              <span>{item.icon}</span>
+              <span className="menu-label">{item.label}</span>
             </Link>
-          </div>
+          ))}
         </div>
+
+        {/* Mobile Menu Dropdown */}
+        {isMenuOpen && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            backgroundColor: '#1f2937',
+            borderTop: '1px solid #374151',
+            padding: '1rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+            zIndex: 100
+          }} className="mobile-menu-dropdown">
+            {menuItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsMenuOpen(false)}
+                style={{
+                  color: pathname.startsWith(item.href) && item.href !== '/' || pathname === item.href ? item.color : '#9ca3af',
+                  textDecoration: 'none',
+                  fontWeight: (pathname.startsWith(item.href) && item.href !== '/' || pathname === item.href) ? 'bold' : 'normal',
+                  padding: '0.8rem',
+                  borderRadius: '0.5rem',
+                  backgroundColor: (pathname.startsWith(item.href) && item.href !== '/' || pathname === item.href) ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                  fontSize: '14px',
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {item.badge && (
+                  <span style={{
+                    background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+                    color: 'white',
+                    fontSize: '9px',
+                    fontWeight: 'bold',
+                    padding: '2px 5px',
+                    borderRadius: '10px',
+                    marginLeft: 'auto'
+                  }}>
+                    {item.badge}
+                  </span>
+                )}
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
+
+      <style jsx>{`
+        @media (max-width: 1024px) {
+          .desktop-menu {
+            display: none !important;
+          }
+          .mobile-menu-btn {
+            display: block !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .menu-label {
+            display: none;
+          }
+        }
+      `}</style>
     </nav>
   );
 }
