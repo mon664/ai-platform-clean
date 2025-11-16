@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import Navigation from '../components/Navigation';
 
 interface Post {
   id: number;
@@ -26,6 +27,7 @@ export default function BlogPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
+      <Navigation />
       <div className="container mx-auto px-4 py-12">
         <div className="flex justify-between items-center mb-12">
           <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500">

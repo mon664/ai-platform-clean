@@ -58,6 +58,21 @@ export default function Navigation() {
             📝 블로그
           </Link>
           <Link
+            href="/ai-blog"
+            style={{
+              color: pathname === '/ai-blog' ? '#10b981' : '#9ca3af',
+              textDecoration: 'none',
+              fontWeight: pathname === '/ai-blog' ? 'bold' : 'normal',
+              padding: '0.4rem 0.8rem',
+              borderRadius: '0.5rem',
+              backgroundColor: pathname === '/ai-blog' ? '#047857' : 'transparent',
+              fontSize: '13px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            🤖 AI 블로그 생성
+          </Link>
+          <Link
             href="/shorts"
             style={{
               color: pathname.startsWith('/shorts') ? '#ec4899' : '#9ca3af',

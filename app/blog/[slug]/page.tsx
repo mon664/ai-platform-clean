@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { marked } from 'marked';
+import Navigation from '../../components/Navigation';
 
 interface Post {
   id: number;
@@ -41,6 +42,7 @@ export default function PostPage({ params }: { params: { slug: string } }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <Navigation />
         <p className="text-2xl text-gray-400">로딩 중...</p>
       </div>
     );
@@ -49,6 +51,7 @@ export default function PostPage({ params }: { params: { slug: string } }) {
   if (notFound || !post) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <Navigation />
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-4">404 - 페이지를 찾을 수 없습니다</h1>
           <p className="text-gray-400 mb-8">요청하신 게시물을 찾을 수 없습니다.</p>
@@ -64,6 +67,7 @@ export default function PostPage({ params }: { params: { slug: string } }) {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
+      <Navigation />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <article className="bg-gray-800 rounded-xl p-8">
           <div className="mb-8 border-b border-gray-700 pb-6">
