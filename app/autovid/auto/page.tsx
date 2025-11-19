@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 
 interface Scene {
   videoSearchKeyword: string[];
@@ -40,6 +40,8 @@ interface Workflow {
   };
 }
 
+const AUTOVID_API = process.env.NEXT_PUBLIC_AUTOVID_API || 'http://localhost:8000/api/autovid';
+
 export default function AutoVideoPage() {
   const [subject, setSubject] = useState('');
   const [requestNumber, setRequestNumber] = useState(5);
@@ -48,14 +50,14 @@ export default function AutoVideoPage() {
     step1: { status: 'idle', title: '', script: [], scenes: [] },
     step2: { status: 'idle', promptTemplate: 'hooking' },
     step3: { status: 'idle', images: [] },
-    step4: { status: 'idle', voiceStyle: 'ko-KR-JennyNeural' },
+    step4: { status: 'idle', voiceStyle: 'ko-KR-Wavenet-A' },
     step5: { status: 'idle' }
   });
 
   const voiceOptions = [
-    { id: 'ko-KR-JennyNeural', name: '남성 (명확함)' },
-    { id: 'ko-KR-SunHiNeural', name: '여성 (밝음)' },
-    { id: 'ko-KR-InJoonNeural', name: '여성 (차분함)' },
+    { id: 'ko-KR-Wavenet-A', name: '여성 (밝음)' },
+    { id: 'ko-KR-Wavenet-D', name: '남성 (명확함)' },
+    { id: 'ko-KR-Wavenet-B', name: '여성 (차분함)' },
   ];
 
   const promptTemplates = [
@@ -78,7 +80,7 @@ export default function AutoVideoPage() {
     }));
 
     try {
-      const response = await fetch('/api/autovid/create-video', {
+      const response = await fetch(`${AUTOVID_API}/script`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -99,64 +101,10 @@ export default function AutoVideoPage() {
         step1: {
           status: 'completed',
           title: data.title,
-          script: data.script || [],
+          script: data.openingSegment?.script || [],
           scenes: data.snippets || []
         },
         step2: { status: 'idle', promptTemplate: 'hooking' }
-      }));
-    } catch (error: any) {
-      setWorkflow(prev => ({
-        ...prev,
-        step1: {
-          ...prev.step1,
-          status: 'error',
-          error: error.message
-        }
-      }));
-    }
-  };
-
-  // ===== STEP 2: 프롬프트 개선 =====
-  const improveScript = async () => {
-    if (workflow.step1.status !== 'completed') {
-      alert('먼저 대본을 생성하세요');
-      return;
-    }
-
-    setWorkflow(prev => ({
-      ...prev,
-      step1: { ...prev.step1, status: 'generating' }
-    }));
-
-    const promptMap = {
-      hooking: '호기심 훅킹으로 시작하는',
-      daily: '일상적이고 자연스러운',
-      intro: '정보 전달 중심의',
-      custom: workflow.step2.customPrompt || '개선된'
-    };
-
-    try {
-      const response = await fetch('/api/gemini/improve-script', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          script: workflow.step1.script.join(' '),
-          promptStyle: promptMap[workflow.step2.promptTemplate as keyof typeof promptMap]
-        })
-      });
-
-      if (!response.ok) throw new Error('개선 실패');
-
-      const data = await response.json();
-
-      setWorkflow(prev => ({
-        ...prev,
-        step1: {
-          ...prev.step1,
-          status: 'completed',
-          script: data.improvedScript.split('\n').filter((s: string) => s.trim())
-        },
-        step2: { ...prev.step2, status: 'completed' }
       }));
     } catch (error: any) {
       setWorkflow(prev => ({
@@ -184,13 +132,12 @@ export default function AutoVideoPage() {
 
     try {
       const imagePromises = workflow.step1.scenes.map(scene =>
-        fetch('/api/autovid/generate-image', {
+        fetch(`${AUTOVID_API}/image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             prompt: scene.imageGenPrompt,
-            style: '실사',
-            aspectRatio: '16:9'
+            model: 'flux-realistic'
           })
         }).then(res => res.ok ? res.json() : Promise.reject('이미지 생성 실패'))
       );
@@ -231,7 +178,7 @@ export default function AutoVideoPage() {
 
     try {
       const scriptText = workflow.step1.script.join(' ');
-      const response = await fetch('/api/tts/generate', {
+      const response = await fetch(`${AUTOVID_API}/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -249,7 +196,7 @@ export default function AutoVideoPage() {
         step4: {
           ...prev.step4,
           status: 'completed',
-          audioUrl: data.audio_url
+          audioUrl: data.audioUrl
         }
       }));
     } catch (error: any) {
@@ -414,24 +361,14 @@ export default function AutoVideoPage() {
               ))}
             </div>
 
-            {workflow.step2.promptTemplate === 'custom' && (
-              <textarea
-                placeholder="커스텀 프롬프트 입력..."
-                value={workflow.step2.customPrompt || ''}
-                onChange={(e) => setWorkflow(prev => ({
-                  ...prev,
-                  step2: { ...prev.step2, customPrompt: e.target.value }
-                }))}
-                className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 mb-4 h-24"
-              />
-            )}
-
             <button
-              onClick={improveScript}
-              disabled={workflow.step1.status === 'generating'}
-              className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold py-3 rounded-lg hover:from-cyan-700 hover:to-blue-700 disabled:opacity-50"
+              onClick={() => setWorkflow(prev => ({
+                ...prev,
+                step2: { ...prev.step2, status: 'completed' }
+              }))}
+              className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold py-3 rounded-lg hover:from-cyan-700 hover:to-blue-700"
             >
-              🤖 AI로 대본 개선
+              ✅ 프롬프트 설정 완료
             </button>
           </div>
         )}
