@@ -1,26 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const WEBDAV_API = 'https://rausu.infini-cloud.net/dav/autoblog/code/api_server.py';
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const { topic, style, duration } = body;
 
-    const response = await fetch(`${WEBDAV_API}`, {
+    // Direct Gemini API integration
+    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + Buffer.from('hhsta:6949689qQ@@').toString('base64')
-      },
-      body: JSON.stringify(body)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `Create a YouTube script about "${topic}" in ${style || 'engaging'} style for ${duration || '5-10'} minutes. Format as JSON with title, scenes array, and total duration.`
+          }]
+        }]
+      })
     });
 
-    if (!response.ok) {
-      throw new Error(`WebDAV API error: ${response.status}`);
+    if (!geminiResponse.ok) {
+      throw new Error(`Gemini API error: ${geminiResponse.status}`);
     }
 
-    const data = await response.json();
-    return NextResponse.json({ success: true, data });
+    const geminiData = await geminiResponse.json();
+    const scriptText = geminiData.candidates[0].content.parts[0].text;
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        script: scriptText,
+        topic,
+        style,
+        generated: new Date().toISOString()
+      }
+    });
 
   } catch (error: any) {
     console.error('Script generation error:', error);
