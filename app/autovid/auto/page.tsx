@@ -1,504 +1,585 @@
 'use client';
 
-import { useState } from 'react';
-import VideoProcessor from '../../components/VideoProcessor';
+import { useState, useRef } from 'react';
 
-interface GenerationResult {
-  title: string;
+interface Scene {
+  videoSearchKeyword: string[];
+  segmentTitle: string;
   script: string[];
-  scenes: {
-    videoSearchKeyword: string[];
-    segmentTitle: string;
+  imageGenPrompt: string;
+}
+
+interface Workflow {
+  step1: {
+    status: 'idle' | 'generating' | 'completed' | 'error';
+    title: string;
     script: string[];
-    imageGenPrompt: string;
-  }[];
-  images: string[];
-  status: 'idle' | 'generating' | 'completed' | 'error' | 'processing';
-  error?: string;
-  videoUrl?: string;
-  processingProgress?: number;
+    scenes: Scene[];
+    error?: string;
+  };
+  step2: {
+    status: 'idle' | 'completed';
+    promptTemplate: 'hooking' | 'daily' | 'intro' | 'custom';
+    customPrompt?: string;
+  };
+  step3: {
+    status: 'idle' | 'generating' | 'completed' | 'error';
+    images: string[];
+    error?: string;
+  };
+  step4: {
+    status: 'idle' | 'generating' | 'completed' | 'error';
+    voiceStyle: string;
+    audioUrl?: string;
+    error?: string;
+  };
+  step5: {
+    status: 'idle' | 'generating' | 'completed' | 'error';
+    videoUrl?: string;
+    error?: string;
+  };
 }
 
 export default function AutoVideoPage() {
   const [subject, setSubject] = useState('');
   const [requestNumber, setRequestNumber] = useState(5);
-  const [includeOpening, setIncludeOpening] = useState(true);
-  const [includeClosing, setIncludeClosing] = useState(true);
-  const [includeImages, setIncludeImages] = useState(true);
-  const [result, setResult] = useState<GenerationResult>({
-    title: '',
-    script: [],
-    scenes: [],
-    images: [],
-    status: 'idle'
+  
+  const [workflow, setWorkflow] = useState<Workflow>({
+    step1: { status: 'idle', title: '', script: [], scenes: [] },
+    step2: { status: 'idle', promptTemplate: 'hooking' },
+    step3: { status: 'idle', images: [] },
+    step4: { status: 'idle', voiceStyle: 'ko-KR-JennyNeural' },
+    step5: { status: 'idle' }
   });
 
-  const generateContent = async () => {
+  const voiceOptions = [
+    { id: 'ko-KR-JennyNeural', name: '남성 (명확함)' },
+    { id: 'ko-KR-SunHiNeural', name: '여성 (밝음)' },
+    { id: 'ko-KR-InJoonNeural', name: '여성 (차분함)' },
+  ];
+
+  const promptTemplates = [
+    { id: 'hooking', name: '🎣 훅킹 멘트', desc: '시청자 이탈 방지' },
+    { id: 'daily', name: '📅 일상적', desc: '자연스럽고 편함' },
+    { id: 'intro', name: '🎤 소개/설명', desc: '정보 전달 중심' },
+    { id: 'custom', name: '⚙️ 커스텀', desc: '직접 입력' }
+  ];
+
+  // ===== STEP 1: 대본 생성 =====
+  const generateStep1 = async () => {
     if (!subject.trim()) {
       alert('주제를 입력해주세요');
       return;
     }
 
-    setResult(prev => ({ ...prev, status: 'generating', error: undefined }));
+    setWorkflow(prev => ({
+      ...prev,
+      step1: { ...prev.step1, status: 'generating' }
+    }));
 
     try {
       const response = await fetch('/api/autovid/create-video', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subject,
           requestNumber,
-          includeOpeningSegment: includeOpening,
-          includeClosingSegment: includeClosing,
-          includeImageGenPrompt: includeImages
-        }),
+          includeOpeningSegment: true,
+          includeClosingSegment: true,
+          includeImageGenPrompt: true
+        })
       });
 
-      if (!response.ok) {
-        throw new Error('생성 실패');
-      }
+      if (!response.ok) throw new Error('대본 생성 실패');
 
       const data = await response.json();
-      setResult({
-        title: data.title,
-        script: data.script,
-        scenes: data.snippets,
-        images: data.images || [],
-        status: 'completed'
-      });
-    } catch (error: any) {
-      setResult(prev => ({
+
+      setWorkflow(prev => ({
         ...prev,
-        status: 'error',
-        error: error.message || '생성 중 오류 발생'
+        step1: {
+          status: 'completed',
+          title: data.title,
+          script: data.script || [],
+          scenes: data.snippets || []
+        },
+        step2: { status: 'idle', promptTemplate: 'hooking' }
+      }));
+    } catch (error: any) {
+      setWorkflow(prev => ({
+        ...prev,
+        step1: {
+          ...prev.step1,
+          status: 'error',
+          error: error.message
+        }
       }));
     }
   };
 
-  const generateImages = async () => {
-    if (result.scenes.length === 0 || result.status !== 'completed') {
-      alert('먼저 스크립트를 생성해주세요');
+  // ===== STEP 2: 프롬프트 개선 =====
+  const improveScript = async () => {
+    if (workflow.step1.status !== 'completed') {
+      alert('먼저 대본을 생성하세요');
       return;
     }
 
-    setResult(prev => ({ ...prev, status: 'generating' }));
+    setWorkflow(prev => ({
+      ...prev,
+      step1: { ...prev.step1, status: 'generating' }
+    }));
+
+    const promptMap = {
+      hooking: '호기심 훅킹으로 시작하는',
+      daily: '일상적이고 자연스러운',
+      intro: '정보 전달 중심의',
+      custom: workflow.step2.customPrompt || '개선된'
+    };
 
     try {
-      const imagePromises = result.scenes.map((scene, index) =>
+      const response = await fetch('/api/gemini/improve-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          script: workflow.step1.script.join(' '),
+          promptStyle: promptMap[workflow.step2.promptTemplate as keyof typeof promptMap]
+        })
+      });
+
+      if (!response.ok) throw new Error('개선 실패');
+
+      const data = await response.json();
+
+      setWorkflow(prev => ({
+        ...prev,
+        step1: {
+          ...prev.step1,
+          status: 'completed',
+          script: data.improvedScript.split('\n').filter((s: string) => s.trim())
+        },
+        step2: { ...prev.step2, status: 'completed' }
+      }));
+    } catch (error: any) {
+      setWorkflow(prev => ({
+        ...prev,
+        step1: {
+          ...prev.step1,
+          status: 'error',
+          error: error.message
+        }
+      }));
+    }
+  };
+
+  // ===== STEP 3: 이미지 생성 =====
+  const generateStep3 = async () => {
+    if (workflow.step1.scenes.length === 0) {
+      alert('먼저 대본을 생성하세요');
+      return;
+    }
+
+    setWorkflow(prev => ({
+      ...prev,
+      step3: { ...prev.step3, status: 'generating' }
+    }));
+
+    try {
+      const imagePromises = workflow.step1.scenes.map(scene =>
         fetch('/api/autovid/generate-image', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             prompt: scene.imageGenPrompt,
-            style: 'cinematic',
+            style: '실사',
             aspectRatio: '16:9'
-          }),
-        }).then(res => {
-          if (!res.ok) {
-            throw new Error(`Scene ${index + 1} 이미지 생성 실패`);
-          }
-          return res.json();
-        })
+          })
+        }).then(res => res.ok ? res.json() : Promise.reject('이미지 생성 실패'))
       );
 
-      const imageResponses = await Promise.all(imagePromises);
-      const images = imageResponses.map(res => res.imageUrl).filter(Boolean);
+      const results = await Promise.all(imagePromises);
+      const images = results.map(r => r.imageUrl).filter(Boolean);
 
-      if (images.length === 0) {
-        throw new Error('생성된 이미지가 없습니다');
-      }
-
-      setResult(prev => ({
+      setWorkflow(prev => ({
         ...prev,
-        images,
-        status: 'completed'
+        step3: {
+          status: 'completed',
+          images
+        }
       }));
     } catch (error: any) {
-      setResult(prev => ({
+      setWorkflow(prev => ({
         ...prev,
-        status: 'error',
-        error: '이미지 생성 중 오류 발생: ' + error.message
+        step3: {
+          ...prev.step3,
+          status: 'error',
+          error: error.message || '이미지 생성 실패'
+        }
       }));
     }
   };
 
-  const handleVideoProcessing = () => {
-    if (result.images.length === 0 || result.status !== 'completed') {
-      alert('먼저 이미지를 생성해주세요');
+  // ===== STEP 4: TTS 생성 =====
+  const generateStep4 = async () => {
+    if (workflow.step1.script.length === 0) {
+      alert('먼저 대본을 생성하세요');
       return;
     }
 
-    setResult(prev => ({ ...prev, status: 'processing', processingProgress: 0 }));
-  };
-
-  const handleVideoComplete = (videoUrl: string) => {
-    // 비디오 다운로드
-    const link = document.createElement('a');
-    link.href = videoUrl;
-    link.download = `${result.title.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.mp4`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setResult(prev => ({
+    setWorkflow(prev => ({
       ...prev,
-      status: 'completed',
-      videoUrl,
-      processingProgress: 100
+      step4: { ...prev.step4, status: 'generating' }
     }));
 
-    alert('✅ 영상이 생성되었습니다! 다운로드가 시작됩니다.');
-  };
-
-  const handleVideoError = (error: string) => {
-    setResult(prev => ({
-      ...prev,
-      status: 'error',
-      error: '영상 생성 실패: ' + error
-    }));
-    alert('❌ ' + error);
-  };
-
-  const handleVideoProgress = (progress: number) => {
-    setResult(prev => ({ ...prev, processingProgress: progress }));
-  };
-
-  const downloadScript = () => {
     try {
-      const scriptData = {
-        title: result.title,
-        script: result.script,
-        scenes: result.scenes,
-        generatedAt: new Date().toISOString()
-      };
+      const scriptText = workflow.step1.script.join(' ');
+      const response = await fetch('/api/tts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: scriptText,
+          voice: workflow.step4.voiceStyle
+        })
+      });
 
-      const blob = new Blob([JSON.stringify(scriptData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${result.title.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_script.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (!response.ok) throw new Error('TTS 생성 실패');
 
-      alert('스크립트가 다운로드되었습니다!');
+      const data = await response.json();
+
+      setWorkflow(prev => ({
+        ...prev,
+        step4: {
+          ...prev.step4,
+          status: 'completed',
+          audioUrl: data.audio_url
+        }
+      }));
     } catch (error: any) {
-      alert('스크립트 다운로드 중 오류 발생: ' + error.message);
+      setWorkflow(prev => ({
+        ...prev,
+        step4: {
+          ...prev.step4,
+          status: 'error',
+          error: error.message
+        }
+      }));
     }
   };
 
-  const downloadImages = () => {
+  // ===== STEP 5: 영상 생성 =====
+  const generateStep5 = async () => {
+    if (workflow.step3.images.length === 0 || !workflow.step4.audioUrl) {
+      alert('먼저 이미지와 음성을 생성하세요');
+      return;
+    }
+
+    setWorkflow(prev => ({
+      ...prev,
+      step5: { ...prev.step5, status: 'generating' }
+    }));
+
     try {
-      result.images.forEach((imageUrl, index) => {
-        // Create a temporary link element for each image
-        const link = document.createElement('a');
-        link.href = imageUrl;
-        link.download = `scene_${index + 1}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      const response = await fetch('/api/video/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          images: workflow.step3.images,
+          audio_url: workflow.step4.audioUrl,
+          sync_audio: true,
+          quality: 'high',
+          resolution: 'landscape'
+        })
       });
 
-      alert('이미지 다운로드가 시작되었습니다!');
+      if (!response.ok) throw new Error('영상 생성 실패');
+
+      const data = await response.json();
+
+      setWorkflow(prev => ({
+        ...prev,
+        step5: {
+          status: 'completed',
+          videoUrl: data.video_url
+        }
+      }));
     } catch (error: any) {
-      alert('이미지 다운로드 중 오류 발생: ' + error.message);
+      setWorkflow(prev => ({
+        ...prev,
+        step5: {
+          ...prev.step5,
+          status: 'error',
+          error: error.message
+        }
+      }));
     }
   };
 
   return (
-    <div className="space-y-8">
-      {/* 헤더 섹션 */}
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
-            <span className="text-2xl">🔥</span>
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-white">자동 영상 생성</h2>
-            <p className="text-gray-300">AI가 주제만으로 완전한 영상 스크립트와 이미지를 생성합니다</p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-4xl font-bold text-white mb-12">🎬 AutoVid - 5단계 영상 생성</h1>
 
-        {/* 설정 패널 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-white font-semibold mb-2">
-              주제
-            </label>
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="예: 세상에서 가장 위험한 관광지"
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 focus:bg-white/20 transition-all"
-            />
+        {/* ===== STEP 1 ===== */}
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold">1</div>
+            <h2 className="text-2xl font-bold text-white">대본 생성</h2>
+            {workflow.step1.status === 'completed' && <span className="ml-auto text-green-400">✅ 완료</span>}
           </div>
 
-          <div>
-            <label className="block text-white font-semibold mb-2">
-              장면 수: {requestNumber}
-            </label>
-            <input
-              type="range"
-              min="3"
-              max="10"
-              value={requestNumber}
-              onChange={(e) => setRequestNumber(Number(e.target.value))}
-              className="w-full accent-gradient-to-r from-orange-500 to-red-500"
-            />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
-              <span>3개</span>
-              <span>10개</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="opening"
-              checked={includeOpening}
-              onChange={(e) => setIncludeOpening(e.target.checked)}
-              className="w-5 h-5 accent-orange-500"
-            />
-            <label htmlFor="opening" className="text-white font-medium">
-              오프닝 세그먼트 포함
-            </label>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="closing"
-              checked={includeClosing}
-              onChange={(e) => setIncludeClosing(e.target.checked)}
-              className="w-5 h-5 accent-orange-500"
-            />
-            <label htmlFor="closing" className="text-white font-medium">
-              클로징 세그먼트 포함
-            </label>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="images"
-              checked={includeImages}
-              onChange={(e) => setIncludeImages(e.target.checked)}
-              className="w-5 h-5 accent-orange-500"
-            />
-            <label htmlFor="images" className="text-white font-medium">
-              이미지 생성 프롬프트 포함
-            </label>
-          </div>
-        </div>
-
-        {/* 생성 버튼 */}
-        <div className="flex flex-col gap-4 mt-6">
-          <div className="flex gap-4">
-            <button
-              onClick={generateContent}
-              disabled={result.status === 'generating'}
-              className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-3 px-6 rounded-lg hover:from-orange-600 hover:to-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105"
-            >
-              {result.status === 'generating' ? '⏳ 생성 중...' : '🚀 영상 콘텐츠 생성'}
-            </button>
-
-            {result.status === 'completed' && result.images.length === 0 && includeImages && (
+          {workflow.step1.status === 'idle' && (
+            <>
+              <input
+                type="text"
+                placeholder="주제 입력 (예: AI의 미래)"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 mb-4"
+              />
+              <div className="mb-4">
+                <label className="text-white text-sm">장면 개수: {requestNumber}</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={requestNumber}
+                  onChange={(e) => setRequestNumber(Number(e.target.value))}
+                  className="w-full"
+                />
+              </div>
               <button
-                onClick={generateImages}
-                disabled={result.status === 'generating'}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-3 px-6 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all transform hover:scale-105"
+                onClick={generateStep1}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 rounded-lg hover:from-blue-700 hover:to-purple-700"
               >
-                🎨 이미지 생성
+                📝 대본 생성 시작
               </button>
-            )}
-          </div>
-
-          {/* 다운로드 버튼 */}
-          {result.status === 'completed' && (
-            <div className="flex gap-3 p-4 bg-white/5 rounded-lg border border-white/10">
-              <span className="text-white font-medium self-center">📥 다운로드:</span>
-              <button
-                onClick={downloadScript}
-                className="bg-gradient-to-r from-green-500 to-teal-500 text-white font-medium py-2 px-4 rounded-lg hover:from-green-600 hover:to-teal-600 transition-all text-sm"
-              >
-                📄 스크립트
-              </button>
-              {result.images.length > 0 && (
-                <button
-                  onClick={downloadImages}
-                  className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium py-2 px-4 rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all text-sm"
-                >
-                  🖼️ 이미지
-                </button>
-              )}
-              {result.images.length > 0 && (
-                <button
-                  onClick={handleVideoProcessing}
-                  disabled={result.status === 'processing'}
-                  className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-medium py-2 px-4 rounded-lg hover:from-red-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm"
-                >
-                  {result.status === 'processing' ? '⏳ 영상 제작 중...' : '🎬 영상 생성 (FFmpeg.wasm)'}
-                </button>
-              )}
-            </div>
+            </>
           )}
-        </div>
-      </div>
 
-      {/* 결과 표시 */}
-      {result.status === 'generating' && (
-        <div className="bg-blue-500/20 backdrop-blur-md rounded-2xl p-8 border border-blue-500/30 text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-white font-medium">AI가 영상 콘텐츠를 생성하고 있습니다...</p>
-          <p className="text-gray-300 text-sm mt-2">잠시만 기다려주세요</p>
-        </div>
-      )}
-
-      {result.status === 'error' && (
-        <div className="bg-red-500/20 backdrop-blur-md rounded-2xl p-8 border border-red-500/30 text-center">
-          <p className="text-red-300 font-medium">❌ {result.error}</p>
-        </div>
-      )}
-
-      {result.status === 'completed' && result.title && (
-        <div className="space-y-6">
-          {/* 제목 */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-            <h3 className="text-xl font-bold text-white mb-2">생성된 제목</h3>
-            <p className="text-gray-200 text-lg">{result.title}</p>
-          </div>
-
-          {/* 스크립트 */}
-          {result.script.length > 0 && (
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-              <h3 className="text-xl font-bold text-white mb-4">전체 스크립트</h3>
-              <div className="space-y-2">
-                {result.script.map((line, index) => (
-                  <p key={index} className="text-gray-200">
-                    {line}
-                  </p>
-                ))}
-              </div>
+          {workflow.step1.status === 'generating' && (
+            <div className="text-center">
+              <div className="animate-spin w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-white">대본 생성 중...</p>
             </div>
           )}
 
-          {/* 장면별 세부 정보 */}
-          {result.scenes.length > 0 && (
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-              <h3 className="text-xl font-bold text-white mb-6">장면별 세부 정보</h3>
-              <div className="space-y-6">
-                {result.scenes.map((scene, index) => (
-                  <div key={index} className="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
-                        {index + 1}
-                      </span>
-                      <h4 className="text-lg font-semibold text-white">{scene.segmentTitle}</h4>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <h5 className="text-white font-medium mb-1">스크립트:</h5>
-                        <div className="text-gray-200">
-                          {scene.script.map((line, lineIndex) => (
-                            <p key={lineIndex} className="text-sm">{line}</p>
-                          ))}
-                        </div>
-                      </div>
-
-                      {includeImages && scene.imageGenPrompt && (
-                        <div>
-                          <h5 className="text-white font-medium mb-1">이미지 생성 프롬프트:</h5>
-                          <p className="text-gray-300 text-sm">{scene.imageGenPrompt}</p>
-                        </div>
-                      )}
-
-                      {scene.videoSearchKeyword && scene.videoSearchKeyword.length > 0 && (
-                        <div>
-                          <h5 className="text-white font-medium mb-1">검색 키워드:</h5>
-                          <div className="flex flex-wrap gap-2">
-                            {scene.videoSearchKeyword.map((keyword, kwIndex) => (
-                              <span key={kwIndex} className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-sm">
-                                {keyword}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 생성된 이미지 */}
-          {result.images.length > 0 && (
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-              <h3 className="text-xl font-bold text-white mb-6">생성된 이미지 ({result.images.length}개)</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {result.images.map((image, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={image}
-                      alt={`Scene ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg"
-                    />
-                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="text-white font-medium">Scene {index + 1}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 영상 처리 섹션 */}
-          {result.status === 'processing' && (
-            <VideoProcessor
-              title={result.title}
-              images={result.images}
-              duration={5}
-              transition="fade"
-              onComplete={handleVideoComplete}
-              onError={handleVideoError}
-              onProgress={handleVideoProgress}
-            />
-          )}
-
-          {/* 생성된 영상 */}
-          {result.videoUrl && (
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-              <h3 className="text-xl font-bold text-white mb-6">🎬 생성된 영상</h3>
-              <div className="space-y-4">
-                <video
-                  src={result.videoUrl}
-                  controls
-                  className="w-full max-w-2xl mx-auto rounded-lg"
-                  style={{ maxHeight: '400px' }}
-                >
-                  Your browser does not support the video tag.
-                </video>
-                <div className="flex justify-center">
-                  <a
-                    href={result.videoUrl}
-                    download={`${result.title.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.mp4`}
-                    className="bg-gradient-to-r from-green-500 to-teal-500 text-white font-bold py-2 px-6 rounded-lg hover:from-green-600 hover:to-teal-600 transition-all"
-                  >
-                    📥 영상 다운로드
-                  </a>
+          {workflow.step1.status === 'completed' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-white font-semibold mb-2">제목: {workflow.step1.title}</h3>
+                <div className="bg-white/5 rounded-lg p-4 max-h-48 overflow-y-auto">
+                  {workflow.step1.script.map((line, i) => (
+                    <p key={i} className="text-gray-200 text-sm mb-2">{line}</p>
+                  ))}
                 </div>
               </div>
+              <button
+                onClick={() => setWorkflow(prev => ({ ...prev, step1: { ...prev.step1, status: 'idle' } }))}
+                className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-lg"
+              >
+                🔄 다시 생성
+              </button>
             </div>
           )}
+
+          {workflow.step1.status === 'error' && (
+            <div className="text-red-400">❌ {workflow.step1.error}</div>
+          )}
         </div>
-      )}
+
+        {/* ===== STEP 2 ===== */}
+        {workflow.step1.status === 'completed' && (
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 mb-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold">2</div>
+              <h2 className="text-2xl font-bold text-white">프롬프트 설정</h2>
+              {workflow.step2.status === 'completed' && <span className="ml-auto text-green-400">✅ 완료</span>}
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              {promptTemplates.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setWorkflow(prev => ({
+                    ...prev,
+                    step2: { ...prev.step2, promptTemplate: t.id as any }
+                  }))}
+                  className={`p-3 rounded-lg transition ${
+                    workflow.step2.promptTemplate === t.id
+                      ? 'bg-cyan-600 border-2 border-cyan-400'
+                      : 'bg-white/5 border border-white/20 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="text-white font-bold text-sm">{t.name}</div>
+                  <div className="text-gray-300 text-xs">{t.desc}</div>
+                </button>
+              ))}
+            </div>
+
+            {workflow.step2.promptTemplate === 'custom' && (
+              <textarea
+                placeholder="커스텀 프롬프트 입력..."
+                value={workflow.step2.customPrompt || ''}
+                onChange={(e) => setWorkflow(prev => ({
+                  ...prev,
+                  step2: { ...prev.step2, customPrompt: e.target.value }
+                }))}
+                className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 mb-4 h-24"
+              />
+            )}
+
+            <button
+              onClick={improveScript}
+              disabled={workflow.step1.status === 'generating'}
+              className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold py-3 rounded-lg hover:from-cyan-700 hover:to-blue-700 disabled:opacity-50"
+            >
+              🤖 AI로 대본 개선
+            </button>
+          </div>
+        )}
+
+        {/* ===== STEP 3 ===== */}
+        {workflow.step2.status === 'completed' && (
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 mb-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-gradient-to-r from-green-500 to-cyan-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold">3</div>
+              <h2 className="text-2xl font-bold text-white">이미지 생성</h2>
+              {workflow.step3.status === 'completed' && <span className="ml-auto text-green-400">✅ 완료</span>}
+            </div>
+
+            {workflow.step3.status === 'idle' && (
+              <button
+                onClick={generateStep3}
+                className="w-full bg-gradient-to-r from-green-600 to-cyan-600 text-white font-bold py-3 rounded-lg hover:from-green-700 hover:to-cyan-700"
+              >
+                🖼️ 이미지 생성
+              </button>
+            )}
+
+            {workflow.step3.status === 'generating' && (
+              <div className="text-center">
+                <div className="animate-spin w-12 h-12 border-4 border-green-400 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-white">이미지 생성 중...</p>
+              </div>
+            )}
+
+            {workflow.step3.status === 'completed' && (
+              <div className="grid grid-cols-3 gap-4">
+                {workflow.step3.images.map((img, i) => (
+                  <img
+                    key={i}
+                    src={img}
+                    alt={`Scene ${i + 1}`}
+                    className="w-full h-32 object-cover rounded-lg"
+                  />
+                ))}
+              </div>
+            )}
+
+            {workflow.step3.status === 'error' && (
+              <div className="text-red-400">❌ {workflow.step3.error}</div>
+            )}
+          </div>
+        )}
+
+        {/* ===== STEP 4 ===== */}
+        {workflow.step3.status === 'completed' && (
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 mb-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold">4</div>
+              <h2 className="text-2xl font-bold text-white">음성 생성 (TTS)</h2>
+              {workflow.step4.status === 'completed' && <span className="ml-auto text-green-400">✅ 완료</span>}
+            </div>
+
+            <div className="mb-4">
+              <label className="text-white text-sm block mb-3">목소리 선택:</label>
+              <div className="grid grid-cols-3 gap-3">
+                {voiceOptions.map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => setWorkflow(prev => ({
+                      ...prev,
+                      step4: { ...prev.step4, voiceStyle: v.id }
+                    }))}
+                    className={`p-3 rounded-lg transition ${
+                      workflow.step4.voiceStyle === v.id
+                        ? 'bg-orange-600 border-2 border-orange-400'
+                        : 'bg-white/5 border border-white/20 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="text-white font-bold text-sm">{v.name}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {workflow.step4.status === 'idle' && (
+              <button
+                onClick={generateStep4}
+                className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white font-bold py-3 rounded-lg hover:from-orange-700 hover:to-red-700"
+              >
+                🎙️ TTS 생성
+              </button>
+            )}
+
+            {workflow.step4.status === 'generating' && (
+              <div className="text-center">
+                <div className="animate-spin w-12 h-12 border-4 border-orange-400 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-white">음성 생성 중...</p>
+              </div>
+            )}
+
+            {workflow.step4.status === 'completed' && workflow.step4.audioUrl && (
+              <audio
+                controls
+                src={workflow.step4.audioUrl}
+                className="w-full"
+              />
+            )}
+
+            {workflow.step4.status === 'error' && (
+              <div className="text-red-400">❌ {workflow.step4.error}</div>
+            )}
+          </div>
+        )}
+
+        {/* ===== STEP 5 ===== */}
+        {workflow.step4.status === 'completed' && (
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold">5</div>
+              <h2 className="text-2xl font-bold text-white">영상 생성</h2>
+              {workflow.step5.status === 'completed' && <span className="ml-auto text-green-400">✅ 완료</span>}
+            </div>
+
+            {workflow.step5.status === 'idle' && (
+              <button
+                onClick={generateStep5}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 rounded-lg hover:from-purple-700 hover:to-pink-700"
+              >
+                🎬 최종 영상 생성
+              </button>
+            )}
+
+            {workflow.step5.status === 'generating' && (
+              <div className="text-center">
+                <div className="animate-spin w-12 h-12 border-4 border-purple-400 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-white">영상 생성 중...</p>
+              </div>
+            )}
+
+            {workflow.step5.status === 'completed' && workflow.step5.videoUrl && (
+              <video
+                controls
+                src={workflow.step5.videoUrl}
+                className="w-full rounded-lg"
+              />
+            )}
+
+            {workflow.step5.status === 'error' && (
+              <div className="text-red-400">❌ {workflow.step5.error}</div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
