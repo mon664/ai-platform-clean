@@ -1,32 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const RAILWAY_API = process.env.NEXT_PUBLIC_RAILWAY_API_URL || 
-  'https://autoblog-python-production.up.railway.app';
+const WEBDAV_API = 'https://rausu.infini-cloud.net/dav/autoblog/code/api_server.py';
 
 export async function POST(request: NextRequest) {
   try {
-    const { subject, requestNumber = 5, requestLanguage = 'ko-KR' } = await request.json();
+    const body = await request.json();
 
-    if (!subject?.trim()) {
-      return NextResponse.json(
-        { success: false, error: '주제를 입력하세요' },
-        { status: 400 }
-      );
-    }
-
-    // Railway 백엔드로 프록시
-    const response = await fetch(`${RAILWAY_API}/api/autovid/script`, {
+    const response = await fetch(`${WEBDAV_API}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subject,
-        requestNumber,
-        requestLanguage
-      })
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + Buffer.from('hhsta:6949689qQ@@').toString('base64')
+      },
+      body: JSON.stringify(body)
     });
 
     if (!response.ok) {
-      throw new Error(`Railway API error: ${response.status}`);
+      throw new Error(`WebDAV API error: ${response.status}`);
     }
 
     const data = await response.json();
