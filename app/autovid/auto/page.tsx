@@ -40,7 +40,7 @@ interface Workflow {
   };
 }
 
-const AUTOVID_API = process.env.NEXT_PUBLIC_AUTOVID_API || 'http://localhost:8000/api/autovid';
+const AUTOVID_API = '/api/autovid';
 
 export default function AutoVideoPage() {
   const [subject, setSubject] = useState('');
