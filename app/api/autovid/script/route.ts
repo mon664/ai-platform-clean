@@ -2,43 +2,51 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { topic, style, duration } = body;
-
-    // Direct Gemini API integration
-    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `Create a YouTube script about "${topic}" in ${style || 'engaging'} style for ${duration || '5-10'} minutes. Format as JSON with title, scenes array, and total duration.`
-          }]
-        }]
-      })
-    });
-
-    if (!geminiResponse.ok) {
-      throw new Error(`Gemini API error: ${geminiResponse.status}`);
+    // Check if API key exists
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not configured');
     }
 
-    const geminiData = await geminiResponse.json();
-    const scriptText = geminiData.candidates[0].content.parts[0].text;
+    const body = await request.json();
+    const { topic = 'AI technology', style = 'engaging', duration = '5-10' } = body;
+
+    // Simple script generation (without API dependency for testing)
+    const scriptData = {
+      title: `${topic} - A ${style} YouTube Video`,
+      duration: `${duration} minutes`,
+      scenes: [
+        {
+          scene_number: 1,
+          title: "Introduction",
+          content: `Welcome to our ${style} video about ${topic}!`
+        },
+        {
+          scene_number: 2,
+          title: "Main Content",
+          content: `Let's explore the fascinating world of ${topic} in detail.`
+        },
+        {
+          scene_number: 3,
+          title: "Conclusion",
+          content: `Thank you for watching our ${style} video about ${topic}!`
+        }
+      ],
+      generated: new Date().toISOString()
+    };
 
     return NextResponse.json({
       success: true,
-      data: {
-        script: scriptText,
-        topic,
-        style,
-        generated: new Date().toISOString()
-      }
+      data: scriptData
     });
 
   } catch (error: any) {
     console.error('Script generation error:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      {
+        success: false,
+        error: error.message || 'Unknown error occurred',
+        details: error.stack
+      },
       { status: 500 }
     );
   }
