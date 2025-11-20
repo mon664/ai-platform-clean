@@ -27,7 +27,17 @@ interface Workflow {
   };
   step3: {
     status: 'idle' | 'generating' | 'completed' | 'error';
-    images: string[];
+    images: Array<{
+      url: string;
+      prompt: string;
+      style: string;
+      aspectRatio: string;
+      width: number;
+      height: number;
+    }>;
+    aspectRatio: string;
+    imageStyle: string;
+    imageType: string;
     error?: string;
   };
   step4: {
@@ -49,7 +59,7 @@ export default function AutoVideoPage() {
   const [workflow, setWorkflow] = useState<Workflow>({
     step1: { status: 'idle', subject: '', duration: '5-10', imageCount: 5, style: 'engaging', language: 'korean' },
     step2: { status: 'idle', title: '', script: [], scenes: [] },
-    step3: { status: 'idle', images: [] },
+    step3: { status: 'idle', images: [], aspectRatio: '16:9', imageStyle: 'realistic', imageType: 'general' },
     step4: { status: 'idle', voiceStyle: 'ko-KR-Wavenet-A' },
     step5: { status: 'idle' }
   });
@@ -72,6 +82,27 @@ export default function AutoVideoPage() {
     { id: '5-10', name: '표준 (5-10분)' },
     { id: '10-15', name: '중편 (10-15분)' },
     { id: '15-20', name: '장편 (15-20분)' }
+  ];
+
+  const aspectRatioOptions = [
+    { id: '16:9', name: '🖥️ 일반 (16:9)' },
+    { id: '1:1', name: '📱 숏츠 (1:1)' },
+    { id: '9:16', name: '📱 세로 (9:16)' },
+    { id: '4:3', name: '📺 구형 (4:3)' }
+  ];
+
+  const imageStyleOptions = [
+    { id: 'realistic', name: '📷 실사 사진' },
+    { id: 'anime', name: '🎌 애니메이션' },
+    { id: 'webtoon', name: '📚 웹툰' },
+    { id: 'artistic', name: '🎨 아트스타일' }
+  ];
+
+  const imageTypeOptions = [
+    { id: 'general', name: '🎬 일반 영상' },
+    { id: 'shorts', name: '📱 숏츠/릴스' },
+    { id: 'educational', name: '📚 교육 콘텐츠' },
+    { id: 'entertainment', name: '🎭 엔터테인먼트' }
   ];
 
   // ===== STEP 1: 프롬프트 설정 완료 =====
@@ -132,6 +163,50 @@ export default function AutoVideoPage() {
     }
   };
 
+  // ===== 개별 이미지 재생성 =====
+  const regenerateSingleImage = async (imageIndex: number) => {
+    try {
+      const response = await fetch(`${AUTOVID_API}/generate-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `Scene ${imageIndex + 1}: ${workflow.step2.scenes[imageIndex].title}`,
+          style: workflow.step3.imageStyle,
+          aspectRatio: workflow.step3.aspectRatio,
+          imageType: workflow.step3.imageType
+        })
+      });
+
+      if (!response.ok) throw new Error('개별 이미지 생성 실패');
+
+      const data = await response.json();
+
+      const newImageData = {
+        url: data.imageUrl,
+        prompt: data.prompt,
+        style: data.style,
+        aspectRatio: data.aspectRatio,
+        width: data.width,
+        height: data.height
+      };
+
+      setWorkflow(prev => {
+        const newImages = [...prev.step3.images];
+        newImages[imageIndex] = newImageData;
+
+        return {
+          ...prev,
+          step3: {
+            ...prev.step3,
+            images: newImages
+          }
+        };
+      });
+    } catch (error: any) {
+      alert(`이미지 ${imageIndex + 1} 재생성 실패: ${error.message}`);
+    }
+  };
+
   // ===== STEP 3: 이미지 생성 =====
   const generateStep3 = async () => {
     if (workflow.step2.scenes.length === 0) {
@@ -151,19 +226,29 @@ export default function AutoVideoPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             prompt: `Scene ${index + 1}: ${scene.title}`,
-            style: 'realistic'
+            style: workflow.step3.imageStyle,
+            aspectRatio: workflow.step3.aspectRatio,
+            imageType: workflow.step3.imageType
           })
         }).then(res => res.ok ? res.json() : Promise.reject('이미지 생성 실패'))
       );
 
       const results = await Promise.all(imagePromises);
-      const images = results.map(r => r.imageUrl).filter(Boolean);
+      const images = results.map(r => ({
+        url: r.imageUrl,
+        prompt: r.prompt,
+        style: r.style,
+        aspectRatio: r.aspectRatio,
+        width: r.width,
+        height: r.height
+      }));
 
       setWorkflow(prev => ({
         ...prev,
         step3: {
+          ...prev.step3,
           status: 'completed',
-          images
+          images: images
         }
       }));
     } catch (error: any) {
@@ -485,12 +570,80 @@ export default function AutoVideoPage() {
             </div>
 
             {workflow.step3.status === 'idle' && (
-              <button
-                onClick={generateStep3}
-                className="w-full bg-gradient-to-r from-green-600 to-cyan-600 text-white font-bold py-3 rounded-lg hover:from-green-700 hover:to-cyan-700"
-              >
-                🖼️ 이미지 생성
-              </button>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-white text-sm block mb-2">이미지 비율 선택:</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {aspectRatioOptions.map(option => (
+                      <button
+                        key={option.id}
+                        onClick={() => setWorkflow(prev => ({
+                          ...prev,
+                          step3: { ...prev.step3, aspectRatio: option.id }
+                        }))}
+                        className={`p-3 rounded-lg transition ${
+                          workflow.step3.aspectRatio === option.id
+                            ? 'bg-green-600 border-2 border-green-400'
+                            : 'bg-white/5 border border-white/20 hover:bg-white/10'
+                        } text-white text-sm`}
+                      >
+                        {option.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-white text-sm block mb-2">이미지 스타일:</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {imageStyleOptions.map(option => (
+                      <button
+                        key={option.id}
+                        onClick={() => setWorkflow(prev => ({
+                          ...prev,
+                          step3: { ...prev.step3, imageStyle: option.id }
+                        }))}
+                        className={`p-3 rounded-lg transition ${
+                          workflow.step3.imageStyle === option.id
+                            ? 'bg-green-600 border-2 border-green-400'
+                            : 'bg-white/5 border border-white/20 hover:bg-white/10'
+                        } text-white text-sm`}
+                      >
+                        {option.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-white text-sm block mb-2">콘텐츠 유형:</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {imageTypeOptions.map(option => (
+                      <button
+                        key={option.id}
+                        onClick={() => setWorkflow(prev => ({
+                          ...prev,
+                          step3: { ...prev.step3, imageType: option.id }
+                        }))}
+                        className={`p-3 rounded-lg transition ${
+                          workflow.step3.imageType === option.id
+                            ? 'bg-green-600 border-2 border-green-400'
+                            : 'bg-white/5 border border-white/20 hover:bg-white/10'
+                        } text-white text-sm`}
+                      >
+                        {option.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={generateStep3}
+                  className="w-full bg-gradient-to-r from-green-600 to-cyan-600 text-white font-bold py-3 rounded-lg hover:from-green-700 hover:to-cyan-700"
+                >
+                  🖼️ 이미지 생성 시작
+                </button>
+              </div>
             )}
 
             {workflow.step3.status === 'generating' && (
@@ -501,15 +654,36 @@ export default function AutoVideoPage() {
             )}
 
             {workflow.step3.status === 'completed' && (
-              <div className="grid grid-cols-3 gap-4">
-                {workflow.step3.images.map((img, i) => (
-                  <img
-                    key={i}
-                    src={img}
-                    alt={`Scene ${i + 1}`}
-                    className="w-full h-32 object-cover rounded-lg"
-                  />
-                ))}
+              <div className="space-y-4">
+                <div className="text-sm text-gray-300">
+                  <span className="mr-4">비율: {workflow.step3.aspectRatio}</span>
+                  <span className="mr-4">스타일: {workflow.step3.imageStyle}</span>
+                  <span>유형: {workflow.step3.imageType}</span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {workflow.step3.images.map((img, i) => (
+                    <div key={i} className="relative group">
+                      <img
+                        src={img.url}
+                        alt={`Scene ${i + 1}`}
+                        className="w-full h-40 object-cover rounded-lg"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg p-2">
+                        <div className="text-white text-xs">
+                          <p className="truncate">{img.prompt}</p>
+                          <p className="text-xs text-gray-300">{img.width}x{img.height}</p>
+                          <button
+                            onClick={() => regenerateSingleImage(i)}
+                            className="mt-1 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded"
+                          >
+                            🔄 재생성
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
