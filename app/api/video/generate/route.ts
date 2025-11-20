@@ -181,20 +181,6 @@ function createSimulatedVideoUrl(project: VideoProject): string {
   return `https://simulated-video-api.com/video?${params.toString()}`;
 }
 
-function getVideoDimensions(aspectRatio: string): { width: number; height: number } {
-  switch (aspectRatio) {
-    case '1:1':
-      return { width: 1080, height: 1080 };
-    case '9:16':
-      return { width: 1080, height: 1920 };
-    case '4:3':
-      return { width: 1440, height: 1080 };
-    case '16:9':
-    default:
-      return { width: 1920, height: 1080 };
-  }
-}
-
 // FFmpeg 전환 효과 목록 (55개)
 const FFMPEG_TRANSITIONS = [
   'fade', 'fadeblack', 'fadewhite', 'distance',
