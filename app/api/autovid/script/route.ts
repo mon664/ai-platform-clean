@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Google Gemini API for script generation
-const GEMINI_API_KEY = 'AIzaSyBlxBK-1-vl-Uzy5Vys9tLPQynRhGk30UY';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyBlxBK-1-vl-Uzy5Vys9tLPQynRhGk30UY';
 
 export async function POST(request: NextRequest) {
   try {

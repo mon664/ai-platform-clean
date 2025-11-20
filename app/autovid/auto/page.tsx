@@ -9,6 +9,16 @@ interface Scene {
   imageGenPrompt: string;
 }
 
+interface Template {
+  id: string;
+  name: string;
+  backgroundColor: string;
+  topHeightPercent: number;
+  bottomHeightPercent: number;
+  fontColor: string;
+  titleFontColor: string;
+}
+
 interface Workflow {
   step1: {
     status: 'idle' | 'completed';
@@ -38,6 +48,7 @@ interface Workflow {
     aspectRatio: string;
     imageStyle: string;
     imageType: string;
+    selectedTemplate: string;
     error?: string;
   };
   step4: {
@@ -55,11 +66,87 @@ interface Workflow {
 
 const AUTOVID_API = '/api/autovid';
 
+// 원본 AutoVid 템플릿 (8개)
+const autovidTemplates: Template[] = [
+  {
+    id: 'black',
+    name: 'BLACK DEFAULT',
+    backgroundColor: '#000000',
+    topHeightPercent: 15,
+    bottomHeightPercent: 15,
+    fontColor: '#FFFFFF',
+    titleFontColor: '#FFE809'
+  },
+  {
+    id: 'white',
+    name: 'WHITE DEFAULT',
+    backgroundColor: '#FFFFFF',
+    topHeightPercent: 15,
+    bottomHeightPercent: 15,
+    fontColor: '#000000',
+    titleFontColor: '#4A58BF'
+  },
+  {
+    id: 'storycard-beige-brown',
+    name: 'StoryCard BeigeBrown',
+    backgroundColor: '#FFFFFBE5',
+    topHeightPercent: 32,
+    bottomHeightPercent: 7,
+    fontColor: '#7F6952',
+    titleFontColor: '#7F6952'
+  },
+  {
+    id: 'storycard-beige-red',
+    name: 'StoryCard BeigeRed',
+    backgroundColor: '#FFFFFBE5',
+    topHeightPercent: 32,
+    bottomHeightPercent: 7,
+    fontColor: '#FF5B71',
+    titleFontColor: '#FF5B71'
+  },
+  {
+    id: 'storycard-black-pink',
+    name: 'StoryCard BlackPink',
+    backgroundColor: '#000000',
+    topHeightPercent: 32,
+    bottomHeightPercent: 7,
+    fontColor: '#FF4D9F',
+    titleFontColor: '#FF4D9F'
+  },
+  {
+    id: 'storycard-white-blue',
+    name: 'StoryCard WhiteBlue',
+    backgroundColor: '#FFFFFF',
+    topHeightPercent: 32,
+    bottomHeightPercent: 7,
+    fontColor: '#608CFF',
+    titleFontColor: '#608CFF'
+  },
+  {
+    id: 'storycard-white-green',
+    name: 'StoryCard WhiteGreen',
+    backgroundColor: '#FFFFFF',
+    topHeightPercent: 32,
+    bottomHeightPercent: 7,
+    fontColor: '#4EFFB6',
+    titleFontColor: '#4EFFB6'
+  },
+  {
+    id: 'storycard-white-red',
+    name: 'StoryCard WhiteRed',
+    backgroundColor: '#FFFFFF',
+    topHeightPercent: 32,
+    bottomHeightPercent: 7,
+    fontColor: '#FF5B71',
+    titleFontColor: '#FF5B71'
+  }
+];
+
 export default function AutoVideoPage() {
   const [workflow, setWorkflow] = useState<Workflow>({
     step1: { status: 'idle', subject: '', duration: '5-10', imageCount: 5, style: 'engaging', language: 'korean' },
     step2: { status: 'idle', title: '', script: [], scenes: [] },
-    step3: { status: 'idle', images: [], aspectRatio: '16:9', imageStyle: 'realistic', imageType: 'general' },
+    step3: { status: 'idle', images: [], aspectRatio: '16:9', imageStyle: 'realistic', imageType: 'general', selectedTemplate: 'black' },
     step4: { status: 'idle', voiceStyle: 'ko-KR-Wavenet-D' },
     step5: { status: 'idle' }
   });
@@ -169,11 +256,12 @@ export default function AutoVideoPage() {
   // ===== 개별 이미지 재생성 =====
   const regenerateSingleImage = async (imageIndex: number) => {
     try {
+      const scene = workflow.step2.scenes[imageIndex];
       const response = await fetch(`${AUTOVID_API}/generate-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `Scene ${imageIndex + 1}: ${workflow.step2.scenes[imageIndex].title}`,
+          prompt: scene.imageGenPrompt || `Scene ${imageIndex + 1}: ${scene.title}`,
           style: workflow.step3.imageStyle,
           aspectRatio: workflow.step3.aspectRatio,
           imageType: workflow.step3.imageType
@@ -228,7 +316,7 @@ export default function AutoVideoPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            prompt: `Scene ${index + 1}: ${scene.title}`,
+            prompt: scene.imageGenPrompt || `Scene ${index + 1}: ${scene.title}`,
             style: workflow.step3.imageStyle,
             aspectRatio: workflow.step3.aspectRatio,
             imageType: workflow.step3.imageType
@@ -675,6 +763,34 @@ export default function AutoVideoPage() {
                         } text-white text-sm`}
                       >
                         {option.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-white text-sm block mb-2">템플릿 선택:</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {autovidTemplates.map(template => (
+                      <button
+                        key={template.id}
+                        onClick={() => setWorkflow(prev => ({
+                          ...prev,
+                          step3: { ...prev.step3, selectedTemplate: template.id }
+                        }))}
+                        className={`p-3 rounded-lg transition ${
+                          workflow.step3.selectedTemplate === template.id
+                            ? 'bg-green-600 border-2 border-green-400'
+                            : 'bg-white/5 border border-white/20 hover:bg-white/10'
+                        } text-white text-sm`}
+                      >
+                        <div className="text-center">
+                          <div className="font-bold">{template.name}</div>
+                          <div className="text-xs opacity-80">
+                            <span className="inline-block w-3 h-3 rounded mr-1" style={{ backgroundColor: template.backgroundColor }}></span>
+                            {template.fontColor}
+                          </div>
+                        </div>
                       </button>
                     ))}
                   </div>
