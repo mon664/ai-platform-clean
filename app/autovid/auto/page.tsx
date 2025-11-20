@@ -60,14 +60,17 @@ export default function AutoVideoPage() {
     step1: { status: 'idle', subject: '', duration: '5-10', imageCount: 5, style: 'engaging', language: 'korean' },
     step2: { status: 'idle', title: '', script: [], scenes: [] },
     step3: { status: 'idle', images: [], aspectRatio: '16:9', imageStyle: 'realistic', imageType: 'general' },
-    step4: { status: 'idle', voiceStyle: 'ko-KR-Wavenet-A' },
+    step4: { status: 'idle', voiceStyle: 'ko-KR-Wavenet-D' },
     step5: { status: 'idle' }
   });
 
   const voiceOptions = [
-    { id: 'ko-KR-Wavenet-A', name: '여성 (밝음)' },
-    { id: 'ko-KR-Wavenet-D', name: '남성 (명확함)' },
-    { id: 'ko-KR-Wavenet-B', name: '여성 (차분함)' },
+    { id: 'ko-KR-Wavenet-D', name: '남성 (자연스러움)' },
+    { id: 'ko-KR-Wavenet-C', name: '여성 (부드러움)' },
+    { id: 'ko-KR-Wavenet-A', name: '여성 (친절함)' },
+    { id: 'ko-KR-Wavenet-B', name: '여성 (신뢰감)' },
+    { id: 'ko-KR-Standard-C', name: '여성 (표준)' },
+    { id: 'ko-KR-Standard-D', name: '남성 (표준)' }
   ];
 
   const styleOptions = [

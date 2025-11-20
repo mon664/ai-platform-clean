@@ -134,11 +134,65 @@ class VideoService {
   }
 
   /**
+   * WebDAV에서 이미지 다운로드
+   */
+  async downloadImageFromWebDAV(webdavPath: string): Promise<Buffer> {
+    try {
+      if (!this.webdavClient) {
+        throw new Error('WebDAV client not initialized');
+      }
+
+      // WebDAV에서 파일 다운로드
+      const fileContent = await this.webdavClient.getFileContents(webdavPath);
+
+      if (Buffer.isBuffer(fileContent)) {
+        return fileContent;
+      } else {
+        // 문자열인 경우 Buffer로 변환
+        return Buffer.from(fileContent as string);
+      }
+    } catch (error) {
+      console.error(`Failed to download image from WebDAV: ${webdavPath}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 비디오를 WebDAV에 업로드
+   */
+  async uploadVideoToWebDAV(webdavPath: string, videoBuffer: Buffer): Promise<void> {
+    try {
+      if (!this.webdavClient) {
+        throw new Error('WebDAV client not initialized');
+      }
+
+      // 디렉토리 생성 (필요한 경우)
+      const directory = webdavPath.substring(0, webdavPath.lastIndexOf('/'));
+      try {
+        await this.webdavClient.createDirectory(directory, { recursive: true });
+      } catch (dirError) {
+        // 디렉토리가 이미 있는 경우 무시
+        console.warn('Directory creation warning:', dirError);
+      }
+
+      // 비디오 파일 업로드
+      await this.webdavClient.putFileContents(webdavPath, videoBuffer);
+      console.log(`Video uploaded to WebDAV: ${webdavPath}`);
+
+    } catch (error) {
+      console.error(`Failed to upload video to WebDAV: ${webdavPath}`, error);
+      throw error;
+    }
+  }
+
+  /**
    * WebDAV 파일 URL 생성
    */
-  private getWebDAVFileUrl(webdavPath: string): string {
+  getWebDAVFileUrl(webdavPath: string): string {
     // WebDAV 경로를 다운로드 가능한 URL로 변환
-    return `${INFINI_CLOUD_CONFIG.url.replace('/remote.php/dav/files/', '/index.php/apps/files/ajax/download.php?dir=')}&files=${path.basename(webdavPath)}`;
+    // Infini Cloud의 경우 직접 다운로드 URL 형식
+    const fileName = webdavPath.split('/').pop();
+    return `${INFINI_CLOUD_CONFIG.url}autovid_sessions/${fileName}`;
   }
 }
 

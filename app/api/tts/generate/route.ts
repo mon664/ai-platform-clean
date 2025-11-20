@@ -51,16 +51,34 @@ export async function POST(req: NextRequest) {
       }
 
     } else {
-      console.log('TTS API: No tone provided, using plain text wrapped in <speak>.');
-      ssmlToSynthesize = `<speak>${text}</speak>`;
+      console.log('TTS API: No tone provided, using optimized SSML for natural speech.');
+      // 자연스러운 말하기를 위한 최적화된 SSML
+      const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+      const ssmlSentences = sentences.map(sentence => {
+        const trimmed = sentence.trim();
+        if (trimmed.length === 0) return '';
+
+        // 적절한 브레이크와 강조 추가
+        const withBreaks = trimmed.replace(/([가-힣]+)([.!?])/g, '$1<break time="400ms"/>$2');
+        return `<prosody rate="0.95" pitch="medium">${withBreaks}</prosody>`;
+      }).filter(s => s.length > 0);
+
+      ssmlToSynthesize = `<speak>${ssmlSentences.join('<break time="600ms"/>')}</speak>`;
     }
 
+    // 자연스러운 음성을 위한 최적화된 파라미터
     const requestBody = {
-      voice: { languageCode: 'ko-KR', name: voice },
-      audioConfig: { 
+      voice: {
+        languageCode: 'ko-KR',
+        name: voice || 'ko-KR-Wavenet-D'  // 기본적으로 가장 자연스러운 음성
+      },
+      audioConfig: {
         audioEncoding: 'LINEAR16',
-        speakingRate: speed || 1.0,
-        pitch: (pitch - 1.0) * 20 || 0.0
+        speakingRate: Math.min(Math.max(speed || 0.9, 0.8), 1.1), // 자연스러운 속도 범위
+        pitch: Math.min(Math.max((pitch - 1.0) * 10 || 0.0, -5.0), 5.0), // 자연스러운 피치 범위
+        sampleRateHertz: 24000, // 더 높은 샘플링 레이트
+        volumeGainDb: 2.0, // 약간의 볼륨 증가
+        effectsProfileId: ['headphone-class-device'] // 헤드폰 환경 최적화
       },
       input: { ssml: ssmlToSynthesize },
     };

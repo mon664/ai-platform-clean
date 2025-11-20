@@ -79,7 +79,7 @@ async function generateVideoWithFFmpeg(project: VideoProject): Promise<string> {
           console.log(`Uploaded ${uploadedImages.length} images to WebDAV`);
 
           // Vercel 환경에서는 WebDAV에 저장된 이미지들로 비디오 URL 생성
-          return createWebDAVVideoUrl(uploadedImages, videoId, project, videoService);
+          return await createWebDAVVideoUrl(uploadedImages, videoId, project, videoService);
         }
       }
     }
@@ -95,24 +95,62 @@ async function generateVideoWithFFmpeg(project: VideoProject): Promise<string> {
   }
 }
 
-function createWebDAVVideoUrl(uploadedImages: string[], videoId: string, project: VideoProject, videoService: any): string {
-  // WebDAV에 저장된 이미지들로 구성된 비디오 URL 생성
-  const hasAudio = project.audioUrl || project.audioPath;
-  const dimensions = videoService.getVideoDimensions(project.aspectRatio || '16:9');
+async function createWebDAVVideoUrl(uploadedImages: string[], videoId: string, project: VideoProject, videoService: any): Promise<string> {
+  try {
+    // slideshow-video 라이브러리로 실제 영상 생성
+    const SlideshowVideo = (await import('slideshow-video')).default;
 
-  const params = new URLSearchParams({
-    images: uploadedImages.join(','),
-    duration: (project.images.length * 3).toString(),
-    audio: hasAudio ? 'true' : 'false',
-    width: dimensions.width.toString(),
-    height: dimensions.height.toString(),
-    transition: project.transition || 'fade',
-    videoId: videoId,
-    source: 'webdav'
-  });
+    const hasAudio = project.audioUrl || project.audioPath;
+    const dimensions = videoService.getVideoDimensions(project.aspectRatio || '16:9');
 
-  // 실제 환경에서는 이 URL이 WebDAV 비디오 생성 서비스를 호출
-  return `https://webdav-video-service.com/generate?${params.toString()}`;
+    // WebDAV 이미지들을 다운로드하여 로컬 버퍼로 변환
+    const imageBuffers = [];
+    for (const imagePath of uploadedImages) {
+      try {
+        const imageBuffer = await videoService.downloadImageFromWebDAV(imagePath);
+        imageBuffers.push(imageBuffer);
+      } catch (error) {
+        console.error(`Failed to download image ${imagePath}:`, error);
+      }
+    }
+
+    if (imageBuffers.length === 0) {
+      throw new Error('No images could be downloaded from WebDAV');
+    }
+
+    // slideshow-video 설정
+    const options = {
+      width: dimensions.width,
+      height: dimensions.height,
+      videoBitrate: '2000k',
+      framerate: 30,
+      transition: project.transition || 'fade',
+      transitionDuration: 1.0,
+      imageDuration: 3.0,
+      outputFormat: 'mp4'
+    };
+
+    // 오디오가 있는 경우 설정 추가
+    if (hasAudio) {
+      options.audioPath = project.audioUrl || project.audioPath;
+      options.audioVolume = 0.8;
+    }
+
+    // 슬라이드쇼 비디오 생성
+    const videoBuffer = await SlideshowVideo.createVideo(imageBuffers, options);
+
+    // 생성된 비디오를 WebDAV에 업로드
+    const webdavVideoPath = `/autovid_sessions/${videoId}/final_video.mp4`;
+    await videoService.uploadVideoToWebDAV(webdavVideoPath, videoBuffer);
+
+    // WebDAV URL 반환
+    return videoService.getWebDAVFileUrl(webdavVideoPath);
+
+  } catch (error) {
+    console.error('Real video creation failed:', error);
+    // 실패시 기존 시뮬레이션 URL 반환
+    return createSimulatedVideoUrl(project);
+  }
 }
 
 async function executeRealFFmpeg(project: VideoProject, videoId: string, videoFileName: string): Promise<string> {
