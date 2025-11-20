@@ -1,12 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-import path from 'path';
-import fs from 'fs';
-import https from 'https';
-import { createWriteStream } from 'fs';
-
-const execFileAsync = promisify(execFile);
 
 interface VideoProject {
   images: string[];
@@ -61,26 +53,30 @@ async function generateVideoWithFFmpeg(project: VideoProject): Promise<string> {
     const webdavPassword = process.env.INFINI_CLOUD_PASSWORD || '';
 
     if (webdavUsername && webdavPassword) {
-      // VideoService 인스턴스 생성
-      const VideoServiceModule = await import('../lib/videoService');
-      const VideoService = VideoServiceModule.default;
+      try {
+        // VideoService 인스턴스 생성
+        const VideoServiceModule = await import('../lib/videoService');
+        const VideoService = VideoServiceModule.default;
 
-      const videoService = new VideoService(webdavUsername, webdavPassword);
+        const videoService = new VideoService(webdavUsername, webdavPassword);
 
-      // WebDAV 연결 테스트
-      const connectionTest = await videoService.testConnection();
-      if (connectionTest) {
-        console.log('WebDAV connection successful, uploading images...');
+        // WebDAV 연결 테스트
+        const connectionTest = await videoService.testConnection();
+        if (connectionTest) {
+          console.log('WebDAV connection successful, uploading images...');
 
-        // 이미지들을 WebDAV에 업로드
-        const uploadedImages = await videoService.uploadImagesToWebDAV(project.images, videoId);
+          // 이미지들을 WebDAV에 업로드
+          const uploadedImages = await videoService.uploadImagesToWebDAV(project.images, videoId);
 
-        if (uploadedImages.length > 0) {
-          console.log(`Uploaded ${uploadedImages.length} images to WebDAV`);
+          if (uploadedImages.length > 0) {
+            console.log(`Uploaded ${uploadedImages.length} images to WebDAV`);
 
-          // Vercel 환경에서는 WebDAV에 저장된 이미지들로 비디오 URL 생성
-          return await createWebDAVVideoUrl(uploadedImages, videoId, project, videoService);
+            // Vercel 환경에서는 WebDAV에 저장된 이미지들로 비디오 URL 생성
+            return await createWebDAVVideoUrl(uploadedImages, videoId, project, videoService);
+          }
         }
+      } catch (error) {
+        console.error('WebDAV integration failed:', error);
       }
     }
 
@@ -95,12 +91,26 @@ async function generateVideoWithFFmpeg(project: VideoProject): Promise<string> {
   }
 }
 
+function getVideoDimensions(aspectRatio: string): { width: number, height: number } {
+  switch (aspectRatio) {
+    case '1:1':
+      return { width: 1080, height: 1080 };
+    case '9:16':
+      return { width: 1080, height: 1920 };
+    case '4:3':
+      return { width: 1440, height: 1080 };
+    case '16:9':
+    default:
+      return { width: 1920, height: 1080 };
+  }
+}
+
 async function createWebDAVVideoUrl(uploadedImages: string[], videoId: string, project: VideoProject, videoService: any): Promise<string> {
   try {
     console.log('WebDAV images uploaded successfully, preparing video URL...');
 
     const hasAudio = project.audioUrl || project.audioPath;
-    const dimensions = videoService.getVideoDimensions(project.aspectRatio || '16:9');
+    const dimensions = getVideoDimensions(project.aspectRatio || '16:9');
 
     // WebDAV에 저장된 이미지들로 비디오 생성 정보 구성
     const videoInfo = {
