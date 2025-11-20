@@ -316,10 +316,45 @@ export default function AutoVideoPage() {
     }
   };
 
+  // ===== 자막 생성 =====
+  const generateSubtitles = async () => {
+    if (workflow.step2.scenes.length === 0) {
+      alert('먼저 대본을 생성하세요');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/subtitle/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scenes: workflow.step2.scenes,
+          style: 'default',
+          duration: 180 // 3분 기준
+        })
+      });
+
+      if (!response.ok) throw new Error('자막 생성 실패');
+
+      const data = await response.json();
+
+      // 자막 파일 다운로드
+      const downloadUrl = data.downloadUrl;
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = 'subtitles.ass';
+      link.click();
+
+      alert('자막 파일이 다운로드되었습니다!');
+    } catch (error: any) {
+      alert('자막 생성 실패: ' + error.message);
+    }
+  };
+
   // ===== STEP 5: 영상 생성 =====
   const generateStep5 = async () => {
-    if (workflow.step3.images.length === 0 || !workflow.step4.audioUrl) {
-      alert('먼저 이미지와 음성을 생성하세요');
+    if (workflow.step3.images.length === 0) {
+      alert('먼저 이미지를 생성하세요');
       return;
     }
 
@@ -329,16 +364,21 @@ export default function AutoVideoPage() {
     }));
 
     try {
+      const videoProject = {
+        images: workflow.step3.images.map(img => img.url),
+        scenes: workflow.step2.scenes.map((scene, index) => ({
+          title: scene.title,
+          content: scene.content,
+          duration: 180 / workflow.step2.scenes.length
+        })),
+        aspectRatio: workflow.step3.aspectRatio,
+        audioUrl: workflow.step4.audioUrl
+      };
+
       const response = await fetch('/api/video/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          images: workflow.step3.images,
-          audio_url: workflow.step4.audioUrl,
-          sync_audio: true,
-          quality: 'high',
-          resolution: 'landscape'
-        })
+        body: JSON.stringify(videoProject)
       });
 
       if (!response.ok) throw new Error('영상 생성 실패');
@@ -349,7 +389,7 @@ export default function AutoVideoPage() {
         ...prev,
         step5: {
           status: 'completed',
-          videoUrl: data.video_url
+          videoUrl: data.videoUrl
         }
       }));
     } catch (error: any) {
