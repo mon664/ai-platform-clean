@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(req: NextRequest) {
   console.log('TTS API: Request received.');
   try {
-    const { text, voice, speed, pitch, tone } = await req.json();
+    const { text, voice, speed = 1.0, pitch = 1.0, tone, zoom = 1.0, pan = 0.0 } = await req.json();
     console.log(`TTS API: Received data - Text length: ${text?.length}, Voice: ${voice}, Tone: ${tone}`);
 
     if (!text) {

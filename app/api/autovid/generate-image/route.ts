@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Vertex AI Studio API configuration
-const VERTEX_AI_API_KEY = 'AQ.Ab8RN6LuBT_emr293bsy-BBxgLc9l9TOnYCz73uoc-uA1aBp4A';
-const VERTEX_AI_ENDPOINT = 'https://aistudio.googleapis.com/v1/models:imagegeneration';
+// Replicate API configuration for Stable Diffusion
+const REPLICATE_API_TOKEN = 'r8_OM0uuuuyg6Lh4Edvb1QgWii7G2y0RnbA0Gh4zT';
+const REPLICATE_ENDPOINT = 'https://api.replicate.com/v1/predictions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,43 +56,69 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Vertex AI Studio API 호출
-      const vertexResponse = await fetch(`${VERTEX_AI_ENDPOINT}?key=${VERTEX_AI_API_KEY}`, {
+      // Replicate API를 사용한 Stable Diffusion 이미지 생성
+      const modelVersion = 'stability-ai/stable-diffusion:ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4';
+
+      const replicateResponse = await fetch(REPLICATE_ENDPOINT, {
         method: 'POST',
         headers: {
+          'Authorization': `Token ${REPLICATE_API_TOKEN}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          instances: [{
-            prompt: optimizedPrompt
-          }],
-          parameters: {
-            sampleCount: 1,
-            aspectRatio: aspectRatio,
-            style: style,
-            seed: Math.floor(Math.random() * 1000000),
-            language: 'auto'
+          version: modelVersion,
+          input: {
+            prompt: optimizedPrompt,
+            width: width,
+            height: height,
+            num_outputs: 1,
+            num_inference_steps: 20,
+            guidance_scale: 7.5,
+            scheduler: "DPMSolverMultistep",
           }
         })
       });
 
-      if (!vertexResponse.ok) {
-        console.error('Vertex AI API error:', vertexResponse.status, vertexResponse.statusText);
-        throw new Error(`Vertex AI API error: ${vertexResponse.statusText}`);
+      if (!replicateResponse.ok) {
+        console.error('Replicate API error:', replicateResponse.status, replicateResponse.statusText);
+        throw new Error(`Replicate API error: ${replicateResponse.statusText}`);
       }
 
-      const vertexData = await vertexResponse.json();
+      const prediction = await replicateResponse.json();
 
-      if (!vertexData.predictions || vertexData.predictions.length === 0) {
-        throw new Error('No images generated from Vertex AI');
+      if (!prediction.id) {
+        throw new Error('No prediction ID in Replicate response');
       }
 
-      // Vertex AI에서 생성된 이미지 URL
-      const imageUrl = vertexData.predictions[0].candidates?.[0]?.image ||
-                      vertexData.predictions[0]?.image;
+      // 이미지 생성 완료까지 대기
+      let imageUrl = null;
+      let attempts = 0;
+      const maxAttempts = 30;
+
+      while (attempts < maxAttempts && !imageUrl) {
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2초 대기
+
+        const statusResponse = await fetch(`${REPLICATE_ENDPOINT}/${prediction.id}`, {
+          headers: {
+            'Authorization': `Token ${REPLICATE_API_TOKEN}`,
+          }
+        });
+
+        if (statusResponse.ok) {
+          const status = await statusResponse.json();
+
+          if (status.status === 'succeeded' && status.output && status.output.length > 0) {
+            imageUrl = status.output[0];
+          } else if (status.status === 'failed') {
+            throw new Error('Image generation failed on Replicate');
+          }
+        }
+
+        attempts++;
+      }
 
       if (!imageUrl) {
-        throw new Error('No image URL in Vertex AI response');
+        throw new Error('Image generation timeout or failed');
       }
 
       return NextResponse.json({
@@ -105,13 +131,13 @@ export async function POST(request: NextRequest) {
         width: width,
         height: height,
         success: true,
-        provider: 'vertex-ai'
+        provider: 'replicate-stable-diffusion'
       });
 
-    } catch (vertexError) {
-      console.error('Vertex AI generation failed:', vertexError);
+    } catch (replicateError) {
+      console.error('Replicate generation failed:', replicateError);
 
-      // Vertex AI 실패시 fallback to placeholder (임시)
+      // Replicate 실패시 fallback to placeholder (임시)
       console.log('Falling back to placeholder image generation');
       const fallbackId = Math.floor(Math.random() * 1000) + 100;
       const fallbackUrl = `https://dummyimage.com/${width}x${height}/cccccc/000000?text=Scene+${fallbackId}`;
@@ -126,7 +152,7 @@ export async function POST(request: NextRequest) {
         height: height,
         success: true,
         provider: 'fallback',
-        warning: 'Vertex AI unavailable, using placeholder'
+        warning: 'Replicate unavailable, using placeholder'
       });
     }
 
