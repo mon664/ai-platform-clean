@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Replicate API configuration for Stable Diffusion
-const REPLICATE_API_TOKEN = 'r8_OM0uuuuyg6Lh4Edvb1QgWii7G2y0RnbA0Gh4zT';
-const REPLICATE_ENDPOINT = 'https://api.replicate.com/v1/predictions';
+// Novita AI API configuration for image generation
+const NOVITA_API_KEY = 'sk_qjUYZXn7N_QnCMoyIrV_P7wkvnC0Z_KFzhz_CI3-its';
+const NOVITA_ENDPOINT = 'https://api.novita.ai/v3/async/txt2img';
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,61 +56,70 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Replicate API를 사용한 Stable Diffusion 이미지 생성
-      const modelVersion = 'stability-ai/stable-diffusion:ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4';
+      // Novita AI API를 사용한 이미지 생성
+      const novitaRequest = {
+        model_name: "stable-diffusion-xl-base-1.0",
+        prompt: optimizedPrompt,
+        negative_prompt: "blurry, bad quality, distorted, ugly",
+        width: width,
+        height: height,
+        sampler_name: "DPM++ 2M Karras",
+        steps: 20,
+        cfg_scale: 7.5,
+        seed: Math.floor(Math.random() * 1000000),
+        batch_size: 1,
+        n: 1
+      };
 
-      const replicateResponse = await fetch(REPLICATE_ENDPOINT, {
+      const novitaResponse = await fetch(NOVITA_ENDPOINT, {
         method: 'POST',
         headers: {
-          'Authorization': `Token ${REPLICATE_API_TOKEN}`,
+          'Authorization': `Bearer ${NOVITA_API_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          version: modelVersion,
-          input: {
-            prompt: optimizedPrompt,
-            width: width,
-            height: height,
-            num_outputs: 1,
-            num_inference_steps: 20,
-            guidance_scale: 7.5,
-            scheduler: "DPMSolverMultistep",
-          }
-        })
+        body: JSON.stringify(novitaRequest)
       });
 
-      if (!replicateResponse.ok) {
-        console.error('Replicate API error:', replicateResponse.status, replicateResponse.statusText);
-        throw new Error(`Replicate API error: ${replicateResponse.statusText}`);
+      if (!novitaResponse.ok) {
+        console.error('Novita AI API error:', novitaResponse.status, novitaResponse.statusText);
+        const errorText = await novitaResponse.text();
+        console.error('Error details:', errorText);
+        throw new Error(`Novita AI API error: ${novitaResponse.statusText}`);
       }
 
-      const prediction = await replicateResponse.json();
+      const novitaData = await novitaResponse.json();
+      console.log('Novita AI response:', novitaData);
 
-      if (!prediction.id) {
-        throw new Error('No prediction ID in Replicate response');
+      if (!novitaData.task_id) {
+        throw new Error('No task_id in Novita AI response');
       }
 
-      // 이미지 생성 완료까지 대기
+      // 이미지 생성 결과 가져오기
+      const resultUrl = `https://api.novita.ai/v3/result/${novitaData.task_id}`;
+
       let imageUrl = null;
       let attempts = 0;
-      const maxAttempts = 30;
+      const maxAttempts = 20;
 
       while (attempts < maxAttempts && !imageUrl) {
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2초 대기
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3초 대기
 
-        const statusResponse = await fetch(`${REPLICATE_ENDPOINT}/${prediction.id}`, {
+        const resultResponse = await fetch(resultUrl, {
           headers: {
-            'Authorization': `Token ${REPLICATE_API_TOKEN}`,
+            'Authorization': `Bearer ${NOVITA_API_KEY}`,
           }
         });
 
-        if (statusResponse.ok) {
-          const status = await statusResponse.json();
+        if (resultResponse.ok) {
+          const result = await resultResponse.json();
+          console.log('Novita AI result:', result);
 
-          if (status.status === 'succeeded' && status.output && status.output.length > 0) {
-            imageUrl = status.output[0];
-          } else if (status.status === 'failed') {
-            throw new Error('Image generation failed on Replicate');
+          if (result.status === 'success' && result.images && result.images.length > 0) {
+            // Base64 이미지를 data URL로 변환
+            const base64Image = result.images[0];
+            imageUrl = `data:image/png;base64,${base64Image}`;
+          } else if (result.status === 'failed') {
+            throw new Error('Image generation failed on Novita AI');
           }
         }
 
@@ -131,13 +140,13 @@ export async function POST(request: NextRequest) {
         width: width,
         height: height,
         success: true,
-        provider: 'replicate-stable-diffusion'
+        provider: 'novita-ai'
       });
 
-    } catch (replicateError) {
-      console.error('Replicate generation failed:', replicateError);
+    } catch (novitaError) {
+      console.error('Novita AI generation failed:', novitaError);
 
-      // Replicate 실패시 fallback to placeholder (임시)
+      // 실패시 fallback to placeholder (임시)
       console.log('Falling back to placeholder image generation');
       const fallbackId = Math.floor(Math.random() * 1000) + 100;
       const fallbackUrl = `https://dummyimage.com/${width}x${height}/cccccc/000000?text=Scene+${fallbackId}`;
@@ -152,7 +161,7 @@ export async function POST(request: NextRequest) {
         height: height,
         success: true,
         provider: 'fallback',
-        warning: 'Replicate unavailable, using placeholder'
+        warning: 'Novita AI unavailable, using placeholder'
       });
     }
 
