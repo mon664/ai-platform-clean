@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if API key exists
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is not configured');
-    }
-
     const body = await request.json();
     const { topic = 'AI technology', style = 'engaging', duration = '5-10' } = body;
 
