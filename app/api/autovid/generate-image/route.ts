@@ -1,35 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const RAILWAY_API = process.env.NEXT_PUBLIC_RAILWAY_API_URL || 
-  'https://autoblog-python-production.up.railway.app';
-
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, style = 'cinematic', aspectRatio = '16:9' } = await request.json();
+    const { prompt, style = 'realistic' } = await request.json();
 
     if (!prompt) {
       return NextResponse.json({ error: '프롬프트가 필요합니다' }, { status: 400 });
     }
 
-    // Railway 백엔드로 프록시
-    const response = await fetch(`${RAILWAY_API}/api/autovid/generate-image`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt,
-        style,
-        aspectRatio
-      })
-    });
+    // 임시 해결: 실제 이미지 생성 대신 placeholder 이미지 반환
+    // 나중에 DALL-E 3나 다른 이미지 생성 API로 교체 필요
+    const placeholderImages = [
+      'https://via.placeholder.com/800x450/4A90E2/FFFFFF?text=Scene+1',
+      'https://via.placeholder.com/800x450/7B68EE/FFFFFF?text=Scene+2',
+      'https://via.placeholder.com/800x450/9370DB/FFFFFF?text=Scene+3',
+      'https://via.placeholder.com/800x450/8A2BE2/FFFFFF?text=Scene+4',
+      'https://via.placeholder.com/800x450/9932CC/FFFFFF?text=Scene+5'
+    ];
 
-    if (!response.ok) {
-      throw new Error(`Image generation failed: ${response.status}`);
-    }
+    const randomImage = placeholderImages[Math.floor(Math.random() * placeholderImages.length)];
 
-    const data = await response.json();
-    
     return NextResponse.json({
-      imageUrl: data.imageUrl || data.image,
+      imageUrl: randomImage,
+      prompt: prompt,
+      style: style,
       success: true
     });
 
