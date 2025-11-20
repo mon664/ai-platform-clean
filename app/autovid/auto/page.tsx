@@ -16,6 +16,7 @@ interface Workflow {
     duration: string;
     imageCount: number;
     style: string;
+    language: 'korean' | 'english';
   };
   step2: {
     status: 'idle' | 'generating' | 'completed' | 'error';
@@ -46,7 +47,7 @@ const AUTOVID_API = '/api/autovid';
 
 export default function AutoVideoPage() {
   const [workflow, setWorkflow] = useState<Workflow>({
-    step1: { status: 'idle', subject: '', duration: '5-10', imageCount: 5, style: 'engaging' },
+    step1: { status: 'idle', subject: '', duration: '5-10', imageCount: 5, style: 'engaging', language: 'korean' },
     step2: { status: 'idle', title: '', script: [], scenes: [] },
     step3: { status: 'idle', images: [] },
     step4: { status: 'idle', voiceStyle: 'ko-KR-Wavenet-A' },
@@ -101,7 +102,8 @@ export default function AutoVideoPage() {
           topic: workflow.step1.subject,
           style: workflow.step1.style,
           duration: workflow.step1.duration,
-          imageCount: workflow.step1.imageCount
+          imageCount: workflow.step1.imageCount,
+          language: workflow.step1.language
         })
       });
 
@@ -342,6 +344,38 @@ export default function AutoVideoPage() {
               </div>
 
               <div>
+                <label className="text-white text-sm block mb-2">대본 언어 선택:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setWorkflow(prev => ({
+                      ...prev,
+                      step1: { ...prev.step1, language: 'korean' }
+                    }))}
+                    className={`p-3 rounded-lg transition ${
+                      workflow.step1.language === 'korean'
+                        ? 'bg-purple-600 border-2 border-purple-400'
+                        : 'bg-white/5 border border-white/20 hover:bg-white/10'
+                    } text-white text-sm`}
+                  >
+                    🇰🇷 한국어
+                  </button>
+                  <button
+                    onClick={() => setWorkflow(prev => ({
+                      ...prev,
+                      step1: { ...prev.step1, language: 'english' }
+                    }))}
+                    className={`p-3 rounded-lg transition ${
+                      workflow.step1.language === 'english'
+                        ? 'bg-purple-600 border-2 border-purple-400'
+                        : 'bg-white/5 border border-white/20 hover:bg-white/10'
+                    } text-white text-sm`}
+                  >
+                    🇺🇸 English
+                  </button>
+                </div>
+              </div>
+
+              <div>
                 <label className="text-white text-sm">이미지 개수: {workflow.step1.imageCount}</label>
                 <input
                   type="range"
@@ -370,6 +404,7 @@ export default function AutoVideoPage() {
               <p className="text-white"><strong>주제:</strong> {workflow.step1.subject}</p>
               <p className="text-white"><strong>길이:</strong> {workflow.step1.duration}분</p>
               <p className="text-white"><strong>스타일:</strong> {workflow.step1.style}</p>
+              <p className="text-white"><strong>대본 언어:</strong> {workflow.step1.language === 'korean' ? '🇰🇷 한국어' : '🇺🇸 English'}</p>
               <p className="text-white"><strong>이미지 개수:</strong> {workflow.step1.imageCount}개</p>
               <button
                 onClick={() => setWorkflow(prev => ({ ...prev, step1: { ...prev.step1, status: 'idle' } }))}
