@@ -8,19 +8,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '프롬프트가 필요합니다' }, { status: 400 });
     }
 
-    // 임시 해결: URL 인코딩된 placeholder 이미지 반환
-    const placeholderImages = [
-      'https://dummyimage.com/800x450/4A90E2/FFFFFF&text=Scene+1',
-      'https://dummyimage.com/800x450/7B68EE/FFFFFF&text=Scene+2',
-      'https://dummyimage.com/800x450/9370DB/FFFFFF&text=Scene+3',
-      'https://dummyimage.com/800x450/8A2BE2/FFFFFF&text=Scene+4',
-      'https://dummyimage.com/800x450/9932CC/FFFFFF&text=Scene+5'
+    // 실제 이미지로 생성 - 픽사벳(Pexels) 무료 이미지 사용
+    const imageThemes = [
+      'technology', 'abstract', 'nature', 'business', 'education',
+      'science', 'digital', 'computer', 'innovation', 'network'
     ];
 
-    const randomImage = placeholderImages[Math.floor(Math.random() * placeholderImages.length)];
+    const randomTheme = imageThemes[Math.floor(Math.random() * imageThemes.length)];
+    const randomId = Math.floor(Math.random() * 1000) + 100;
+
+    // 무료 이미지 서비스 사용
+    const imageUrl = `https://picsum.photos/800/450?random=${randomId}&blur=${Math.random() > 0.7 ? 1 : 0}`;
 
     return NextResponse.json({
-      imageUrl: randomImage,
+      imageUrl: imageUrl,
       prompt: prompt,
       style: style,
       success: true

@@ -192,7 +192,7 @@ export default function AutoVideoPage() {
 
     try {
       const scriptText = workflow.step2.script.join(' ');
-      const response = await fetch(`${AUTOVID_API}/tts`, {
+      const response = await fetch('/api/tts/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -205,12 +205,18 @@ export default function AutoVideoPage() {
 
       const data = await response.json();
 
+      // Google TTS는 audioContent를 base64로 반환
+      const base64Audio = data.audioContent;
+      const audioBytes = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0));
+      const audioBlob = new Blob([audioBytes], { type: 'audio/wav' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
       setWorkflow(prev => ({
         ...prev,
         step4: {
           ...prev.step4,
           status: 'completed',
-          audioUrl: data.audioUrl
+          audioUrl: audioUrl
         }
       }));
     } catch (error: any) {
