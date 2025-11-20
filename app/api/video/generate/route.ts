@@ -1,4 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+import fs from 'fs';
+import https from 'https';
+import { createWriteStream } from 'fs';
+
+const execFileAsync = promisify(execFile);
 
 interface VideoProject {
   images: string[];
@@ -44,23 +52,54 @@ export async function POST(request: NextRequest) {
 
 async function generateVideoWithFFmpeg(project: VideoProject): Promise<string> {
   const videoId = `video_${Date.now()}`;
-  const videoFileName = `${videoId}.mp4`;
 
   console.log('Starting FFmpeg video generation with', project.images.length, 'images');
 
   try {
-    // Node.js 환경에서 FFmpeg 명령어 실행 (실제 서버 환경에서 필요)
-    if (process.platform === 'linux' || process.platform === 'darwin') {
-      // 실제 FFmpeg 명령어 실행 (Linux/macOS 환경)
-      return await executeRealFFmpeg(project, videoId, videoFileName);
-    } else {
-      // Windows 환경이나 개발 환경에서는 시뮬레이션
-      console.log('Running in Windows/development mode, using simulation');
+    // VideoService 인스턴스 생성
+    const VideoServiceModule = await import('../../../lib/videoService');
+    const VideoService = VideoServiceModule.default;
+
+    // WebDAV 자격 증명 (환경 변수에서 가져오거나 기본값 사용)
+    const webdavUsername = process.env.INFINI_CLOUD_USERNAME || '';
+    const webdavPassword = process.env.INFINI_CLOUD_PASSWORD || '';
+
+    if (!webdavUsername || !webdavPassword) {
+      console.warn('WebDAV credentials not found, using fallback');
       return createSimulatedVideoUrl(project);
     }
+
+    const videoService = new VideoService(webdavUsername, webdavPassword);
+
+    // WebDAV 연결 테스트
+    const connectionTest = await videoService.testConnection();
+    if (!connectionTest) {
+      console.warn('WebDAV connection failed, using fallback');
+      return createSimulatedVideoUrl(project);
+    }
+
+    // 이미지들을 WebDAV에 업로드
+    const uploadedImages = await videoService.uploadImagesToWebDAV(project.images, videoId);
+
+    if (uploadedImages.length === 0) {
+      console.warn('No images uploaded to WebDAV, using fallback');
+      return createSimulatedVideoUrl(project);
+    }
+
+    // FFmpeg으로 비디오 생성
+    const videoUrl = await videoService.createVideoWithFFmpeg(
+      uploadedImages,
+      project.audioUrl || project.audioPath,
+      project.aspectRatio,
+      project.transition,
+      videoId
+    );
+
+    return videoUrl;
+
   } catch (error) {
-    console.error('FFmpeg execution failed:', error);
-    // FFmpeg 실행 실패시 시뮬레이션으로 fallback
+    console.error('FFmpeg generation failed:', error);
+    // 실패시 시뮬레이션으로 fallback
     return createSimulatedVideoUrl(project);
   }
 }
