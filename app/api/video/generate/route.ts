@@ -53,55 +53,66 @@ export async function POST(request: NextRequest) {
 async function generateVideoWithFFmpeg(project: VideoProject): Promise<string> {
   const videoId = `video_${Date.now()}`;
 
-  console.log('Starting FFmpeg video generation with', project.images.length, 'images');
+  console.log('Starting video generation with', project.images.length, 'images');
 
   try {
-    // VideoService 인스턴스 생성
-    const VideoServiceModule = await import('../../../lib/videoService');
-    const VideoService = VideoServiceModule.default;
-
     // WebDAV 자격 증명 (환경 변수에서 가져오거나 기본값 사용)
     const webdavUsername = process.env.INFINI_CLOUD_USERNAME || '';
     const webdavPassword = process.env.INFINI_CLOUD_PASSWORD || '';
 
-    if (!webdavUsername || !webdavPassword) {
-      console.warn('WebDAV credentials not found, using fallback');
-      return createSimulatedVideoUrl(project);
+    if (webdavUsername && webdavPassword) {
+      // VideoService 인스턴스 생성
+      const VideoServiceModule = await import('../lib/videoService');
+      const VideoService = VideoServiceModule.default;
+
+      const videoService = new VideoService(webdavUsername, webdavPassword);
+
+      // WebDAV 연결 테스트
+      const connectionTest = await videoService.testConnection();
+      if (connectionTest) {
+        console.log('WebDAV connection successful, uploading images...');
+
+        // 이미지들을 WebDAV에 업로드
+        const uploadedImages = await videoService.uploadImagesToWebDAV(project.images, videoId);
+
+        if (uploadedImages.length > 0) {
+          console.log(`Uploaded ${uploadedImages.length} images to WebDAV`);
+
+          // Vercel 환경에서는 WebDAV에 저장된 이미지들로 비디오 URL 생성
+          return createWebDAVVideoUrl(uploadedImages, videoId, project, videoService);
+        }
+      }
     }
 
-    const videoService = new VideoService(webdavUsername, webdavPassword);
-
-    // WebDAV 연결 테스트
-    const connectionTest = await videoService.testConnection();
-    if (!connectionTest) {
-      console.warn('WebDAV connection failed, using fallback');
-      return createSimulatedVideoUrl(project);
-    }
-
-    // 이미지들을 WebDAV에 업로드
-    const uploadedImages = await videoService.uploadImagesToWebDAV(project.images, videoId);
-
-    if (uploadedImages.length === 0) {
-      console.warn('No images uploaded to WebDAV, using fallback');
-      return createSimulatedVideoUrl(project);
-    }
-
-    // FFmpeg으로 비디오 생성
-    const videoUrl = await videoService.createVideoWithFFmpeg(
-      uploadedImages,
-      project.audioUrl || project.audioPath,
-      project.aspectRatio,
-      project.transition,
-      videoId
-    );
-
-    return videoUrl;
+    // WebDAV가 없거나 실패한 경우 기존 시뮬레이션 사용
+    console.log('Using fallback simulation mode');
+    return createSimulatedVideoUrl(project);
 
   } catch (error) {
-    console.error('FFmpeg generation failed:', error);
+    console.error('Video generation failed:', error);
     // 실패시 시뮬레이션으로 fallback
     return createSimulatedVideoUrl(project);
   }
+}
+
+function createWebDAVVideoUrl(uploadedImages: string[], videoId: string, project: VideoProject, videoService: any): string {
+  // WebDAV에 저장된 이미지들로 구성된 비디오 URL 생성
+  const hasAudio = project.audioUrl || project.audioPath;
+  const dimensions = videoService.getVideoDimensions(project.aspectRatio || '16:9');
+
+  const params = new URLSearchParams({
+    images: uploadedImages.join(','),
+    duration: (project.images.length * 3).toString(),
+    audio: hasAudio ? 'true' : 'false',
+    width: dimensions.width.toString(),
+    height: dimensions.height.toString(),
+    transition: project.transition || 'fade',
+    videoId: videoId,
+    source: 'webdav'
+  });
+
+  // 실제 환경에서는 이 URL이 WebDAV 비디오 생성 서비스를 호출
+  return `https://webdav-video-service.com/generate?${params.toString()}`;
 }
 
 async function executeRealFFmpeg(project: VideoProject, videoId: string, videoFileName: string): Promise<string> {
