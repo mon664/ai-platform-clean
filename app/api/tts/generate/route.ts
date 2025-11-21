@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
     const tempAudioUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
     const speechData = {
-      text: text,
-      audioContent: tempAudioUrl, // 임시 오디오 URL
+      success: true,
+      audioUrl: tempAudioUrl, // 임시 오디오 URL - Changed from audioContent to audioUrl
       message: "TTS service using sample audio",
       provider: "fallback-audio",
       duration: Math.max(1, text.length * 0.1), // 예상 음성 길이 (초)
@@ -35,8 +35,9 @@ export async function POST(req: NextRequest) {
     console.error('TTS API: Unhandled error in POST handler.', error);
     return new NextResponse(
       JSON.stringify({
+        success: false,
         error: error.message || '서버 오류가 발생했습니다',
-        audioContent: null,
+        audioUrl: null,
         provider: "error-fallback"
       }),
       { status: 500 }
