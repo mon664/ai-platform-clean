@@ -35,12 +35,12 @@ export async function POST(request: NextRequest) {
       optimizedPrompt = `Delicious Korean food photography: ${body.prompt}. Steam rising from hot bowl, traditional Korean restaurant atmosphere, warm lighting, food styling professional.`;
     }
 
-    // Unsplash를 통한 고품질 이미지 생성 (안정적인 방식)
-    const unsplashQuery = encodeURIComponent(optimizedPrompt);
-    const width = body.aspectRatio === "1:1" ? 1024 : 1280;
-    const height = body.aspectRatio === "9:16" ? 1280 : 720;
+    // 안정적인 이미지 URL 생성
+    const width = body.aspectRatio === "1:1" ? 800 : (body.aspectRatio === "9:16" ? 720 : 1280);
+    const height = body.aspectRatio === "9:16" ? 1280 : (body.aspectRatio === "1:1" ? 800 : 720);
 
-    const imageUrl = `https://source.unsplash.com/${width}x${height}/?${unsplashQuery}`;
+    // 가장 안정적인 Picsum 사용
+    const imageUrl = `https://picsum.photos/${width}/${height}?random=${Date.now()}&blur=0`;
 
     return NextResponse.json({
       imageUrl: imageUrl,
