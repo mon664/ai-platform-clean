@@ -8,13 +8,13 @@ export async function POST(req: NextRequest) {
 
     if (!text) {
       console.error('TTS API: Error - No text provided.');
-      return new NextResponse(JSON.stringify({ error: '텍스트가 필요합니다' }), { status: 400 });
+      return new NextResponse(JSON.stringify({ error: '?�스?��? ?�요?�니?? }), { status: 400 });
     }
 
-    const GOOGLE_TTS_API_KEY = 'AIzaSyCDznEqbR15saENX8cK1MOLBT-f9wgUxfQ';
+    const GOOGLE_TTS_API_KEY = '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';
     if (!GOOGLE_TTS_API_KEY) {
       console.error('TTS API: Error - Google TTS API key not set.');
-      return new NextResponse(JSON.stringify({ error: 'Google TTS API 키가 설정되지 않았습니다' }), { status: 500 });
+      return new NextResponse(JSON.stringify({ error: 'Google TTS API ?��? ?�정?��? ?�았?�니?? }), { status: 500 });
     }
 
     let ssmlToSynthesize = '';
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       if (!ssmlGenRes.ok) {
         const errorText = await ssmlGenRes.text();
         console.error(`TTS API: AI for SSML generation failed. Status: ${ssmlGenRes.status}, Error: ${errorText}`);
-        throw new Error('AI를 이용한 SSML 생성에 실패했습니다.');
+        throw new Error('AI�??�용??SSML ?�성???�패?�습?�다.');
       }
 
       const ssmlGenData = await ssmlGenRes.json();
@@ -47,38 +47,38 @@ export async function POST(req: NextRequest) {
       
       if (!ssmlToSynthesize) {
          console.error('TTS API: Error - Could not extract valid SSML from AI response.', rawResponse);
-         throw new Error('AI가 유효한 SSML을 생성하지 못했습니다.');
+         throw new Error('AI가 ?�효??SSML???�성?��? 못했?�니??');
       }
 
     } else {
       console.log('TTS API: No tone provided, using optimized SSML for natural speech.');
-      // 자연스러운 말하기를 위한 최적화된 SSML
+      // ?�연?�러??말하기�? ?�한 최적?�된 SSML
       const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
       const ssmlSentences = sentences.map(sentence => {
         const trimmed = sentence.trim();
         if (trimmed.length === 0) return '';
 
-        // 적절한 브레이크와 강조 추가
-        const withBreaks = trimmed.replace(/([가-힣]+)([.!?])/g, '$1<break time="400ms"/>$2');
+        // ?�절??브레?�크?� 강조 추�?
+        const withBreaks = trimmed.replace(/([가-??+)([.!?])/g, '$1<break time="400ms"/>$2');
         return `<prosody rate="0.95" pitch="medium">${withBreaks}</prosody>`;
       }).filter(s => s.length > 0);
 
       ssmlToSynthesize = `<speak>${ssmlSentences.join('<break time="600ms"/>')}</speak>`;
     }
 
-    // 자연스러운 음성을 위한 최적화된 파라미터
+    // ?�연?�러???�성???�한 최적?�된 ?�라미터
     const requestBody = {
       voice: {
         languageCode: 'ko-KR',
-        name: voice || 'ko-KR-Wavenet-D'  // 기본적으로 가장 자연스러운 음성
+        name: voice || 'ko-KR-Wavenet-D'  // 기본?�으�?가???�연?�러???�성
       },
       audioConfig: {
         audioEncoding: 'LINEAR16',
-        speakingRate: Math.min(Math.max(speed || 0.9, 0.8), 1.1), // 자연스러운 속도 범위
-        pitch: Math.min(Math.max((pitch - 1.0) * 10 || 0.0, -5.0), 5.0), // 자연스러운 피치 범위
-        sampleRateHertz: 24000, // 더 높은 샘플링 레이트
-        volumeGainDb: 2.0, // 약간의 볼륨 증가
-        effectsProfileId: ['headphone-class-device'] // 헤드폰 환경 최적화
+        speakingRate: Math.min(Math.max(speed || 0.9, 0.8), 1.1), // ?�연?�러???�도 범위
+        pitch: Math.min(Math.max((pitch - 1.0) * 10 || 0.0, -5.0), 5.0), // ?�연?�러???�치 범위
+        sampleRateHertz: 24000, // ???��? ?�플�??�이??
+        volumeGainDb: 2.0, // ?�간??볼륨 증�?
+        effectsProfileId: ['headphone-class-device'] // ?�드???�경 최적??
       },
       input: { ssml: ssmlToSynthesize },
     };
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
                 if (!res.ok) {
                   const errorText = await res.text();
                   console.error(`TTS API: Google TTS API call failed. Status: ${res.status}, Error: ${errorText}`);
-                  throw new Error(`최종 음성 생성 실패: ${errorText}`);
+                  throw new Error(`최종 ?�성 ?�성 ?�패: ${errorText}`);
                 }    const data = await res.json();
     console.log('TTS API: Google TTS API call successful.');
     
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('TTS API: Unhandled error in POST handler.', error);
     return new NextResponse(
-      JSON.stringify({ error: error.message || '서버 오류가 발생했습니다' }),
+      JSON.stringify({ error: error.message || '?�버 ?�류가 발생?�습?�다' }),
       { status: 500 }
     );
   }

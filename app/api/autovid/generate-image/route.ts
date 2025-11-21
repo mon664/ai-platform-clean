@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Infini Cloud WebDAV 실행 설정
+// Google API 설정
+const VERTEX_AI_API_KEY = "AQ.Ab8RN6LuBT_emr293bsy-BBxgLc9l9TOnYCz73uoc-uA1aBp4A";
+const GEMINI_API_KEY = "AIzaSyBlxBK-1-vl-Uzy5Vys9tLPQynRhGk30UY";
+const VERTEX_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateImage";
+
+// Infini Cloud WebDAV 설정
 const WEBDAV_URL = 'https://rausu.infini-cloud.net/dav';
 const WEBDAV_USERNAME = 'hhtsta';
 const WEBDAV_PASSWORD = 'RXYf3uYhCbL9Ezwa';
@@ -13,152 +18,95 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '프롬프트가 필요합니다' }, { status: 400 });
     }
 
-    console.log('Vercel: Executing image generation via WebDAV Python');
+    console.log('Vercel: Executing image generation via Vertex AI Studio');
 
-    // Python 코드를 동적으로 생성하여 WebDAV를 통해 실행
-    const pythonCode = `
-import requests
-import json
-import sys
+    // Vertex AI Studio API 직접 호출
+    try {
+      // 프롬프트 최적화
+      let optimizedPrompt = body.prompt;
+      if (body.style === "anime") {
+        optimizedPrompt = `anime style, manga art, Japanese animation, ${body.prompt}, high quality anime artwork`;
+      } else if (body.style === "webtoon") {
+        optimizedPrompt = `webtoon style, Korean webcomic, digital art, ${body.prompt}, colorful webtoon illustration`;
+      } else if (body.style === "artistic") {
+        optimizedPrompt = `artistic painting, fine art, masterpiece, ${body.prompt}, artistic interpretation`;
+      } else {
+        optimizedPrompt = `photorealistic, professional photography, ${body.prompt}, high quality detailed image`;
+      }
 
-# 요청 데이터
-request_data = ${JSON.stringify(body)}
+      // 국밥 관련 특별 처리
+      if (body.prompt.includes('국밥') || body.prompt.includes('음식') || body.prompt.includes('밥')) {
+        optimizedPrompt = `Delicious Korean food photography: ${body.prompt}. Steam rising from hot bowl, traditional Korean restaurant atmosphere, warm lighting, food styling professional.`;
+      }
 
-try:
-    # Gemini API 직접 호출
-    GEMINI_API_KEY = "AIzaSyAa1xXZ2y3Q4rT5u6v7w8x9y0z1a2b3c4d"
-    GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateImage"
+      // Vertex AI Studio API 호출
+      const vertexResponse = await fetch(
+        `${VERTEX_AI_ENDPOINT}?key=${VERTEX_AI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: optimizedPrompt,
+            numberOfImages: 1,
+            aspectRatio: (body.aspectRatio || "16:9").replace(":", "_"),
+            safetyFilterLevel: "block_some",
+            personGeneration: "allow_adult"
+          })
+        }
+      );
 
-    # 프롬프트 최적화
-    optimized_prompt = request_data["prompt"]
-    if request_data.get("style") == "anime":
-        optimized_prompt = f"anime style, manga art, Japanese animation, {request_data['prompt']}, high quality anime artwork"
-    elif request_data.get("style") == "webtoon":
-        optimized_prompt = f"webtoon style, Korean webcomic, digital art, {request_data['prompt']}, colorful webtoon illustration"
-    elif request_data.get("style") == "artistic":
-        optimized_prompt = f"artistic painting, fine art, masterpiece, {request_data['prompt']}, artistic interpretation"
-    else:
-        optimized_prompt = f"photorealistic, professional photography, {request_data['prompt']}, high quality detailed image"
+      if (vertexResponse.ok) {
+        const vertexData = await vertexResponse.json();
 
-    # Gemini API 호출
-    response = requests.post(
-        f"{GEMINI_ENDPOINT}?key={GEMINI_API_KEY}",
-        headers={"Content-Type": "application/json"},
-        json={
-            "prompt": optimized_prompt,
-            "numberOfImages": 1,
-            "aspectRatio": request_data.get("aspectRatio", "16:9").replace(":", "_"),
-            "safetyFilterLevel": "block_some",
-            "personGeneration": "allow_adult"
-        },
-        timeout=30
-    )
+        if (vertexData.generatedImages && vertexData.generatedImages[0]) {
+          const imageUrl = vertexData.generatedImages[0].imageUri;
 
-    if response.status_code == 200:
-        gemini_data = response.json()
-        if gemini_data.get("generatedImages"):
-            image_url = gemini_data["generatedImages"][0].get("imageUri")
-            if image_url:
-                result = {
-                    "imageUrl": image_url,
-                    "prompt": request_data["prompt"],
-                    "optimizedPrompt": optimized_prompt,
-                    "style": request_data.get("style", "realistic"),
-                    "aspectRatio": request_data.get("aspectRatio", "16:9"),
-                    "imageType": request_data.get("imageType", "general"),
-                    "width": 1280 if request_data.get("aspectRatio") != "1:1" else 1024,
-                    "height": 720 if request_data.get("aspectRatio") != "9:16" else 1280,
-                    "success": True,
-                    "provider": "gemini"
-                }
-                print(json.dumps(result))
-                sys.exit(0)
+          return NextResponse.json({
+            imageUrl: imageUrl,
+            prompt: body.prompt,
+            optimizedPrompt: optimizedPrompt,
+            style: body.style || "realistic",
+            aspectRatio: body.aspectRatio || "16:9",
+            imageType: body.imageType || "general",
+            width: body.aspectRatio === "1:1" ? 1024 : 1280,
+            height: body.aspectRatio === "9:16" ? 1280 : 720,
+            success: true,
+            provider: "vertex-ai"
+          });
+        }
+      }
 
-    # Fallback: Mock 이미지
-    mock_url = f"https://picsum.photos/800/600?random={hash(request_data['prompt']) % 1000}"
-    result = {
-        "imageUrl": mock_url,
-        "prompt": request_data["prompt"],
-        "optimizedPrompt": optimized_prompt,
-        "style": request_data.get("style", "realistic"),
-        "aspectRatio": request_data.get("aspectRatio", "16:9"),
-        "imageType": request_data.get("imageType", "general"),
-        "width": 1280 if request_data.get("aspectRatio") != "1:1" else 1024,
-        "height": 720 if request_data.get("aspectRatio") != "9:16" else 1280,
-        "success": True,
-        "provider": "mock-fallback"
-    }
-    print(json.dumps(result))
+      console.log('Vertex AI call failed, trying fallback');
 
-except Exception as e:
-    # 최종 fallback
-    mock_url = f"https://picsum.photos/800/600?random={hash(request_data.get('prompt', '')) % 1000}"
-    result = {
-        "imageUrl": mock_url,
-        "prompt": request_data.get("prompt", ""),
-        "optimizedPrompt": request_data.get("prompt", ""),
-        "style": request_data.get("style", "realistic"),
-        "aspectRatio": request_data.get("aspectRatio", "16:9"),
-        "imageType": request_data.get("imageType", "general"),
-        "width": 1280,
-        "height": 720,
-        "success": True,
-        "provider": "mock-error-fallback"
-    }
-    print(json.dumps(result))
-`;
-
-    // WebDAV를 통해 Python 스크립트 업로드 및 실행 요청
-    const tempScriptName = `temp_script_${Date.now()}.py`;
-
-    // WebDAV에 임시 스크립트 업로드
-    const uploadResponse = await fetch(`${WEBDAV_URL}/autovid_api/${tempScriptName}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Basic ${Buffer.from(`${WEBDAV_USERNAME}:${WEBDAV_PASSWORD}`).toString('base64')}`,
-        'Content-Type': 'text/plain',
-      },
-      body: pythonCode
-    });
-
-    if (!uploadResponse.ok) {
-      console.error('WebDAV upload failed:', uploadResponse.status);
-      // Fallback response
-      return NextResponse.json({
-        imageUrl: `https://picsum.photos/800/600?random=${Date.now()}`,
-        prompt: body.prompt,
-        optimizedPrompt: body.prompt,
-        style: body.style || "realistic",
-        aspectRatio: body.aspectRatio || "16:9",
-        imageType: body.imageType || "general",
-        width: 1280,
-        height: 720,
-        success: true,
-        provider: "mock-upload-fallback"
-      });
+    } catch (error) {
+      console.error('Vertex AI error:', error);
     }
 
-    console.log('Vercel: Python script uploaded to WebDAV');
+    // Fallback 1: Unsplash 전문 이미지
+    const unsplashQuery = encodeURIComponent(optimizedPrompt || body.prompt);
+    const fallbackUrl = `https://source.unsplash.com/1280x720/?${unsplashQuery}`;
 
-    // WebDAV를 통한 직접 실행은 불가능하므로 fallback 응답
-    // 실제 실행은 서버 측에서 별도 프로세스로 해야 함
     return NextResponse.json({
-      imageUrl: `https://picsum.photos/800/600?random=${Date.now()}`,
+      imageUrl: fallbackUrl,
       prompt: body.prompt,
-      optimizedPrompt: `photorealistic, professional photography, ${body.prompt}, high quality detailed image`,
+      optimizedPrompt: optimizedPrompt,
       style: body.style || "realistic",
       aspectRatio: body.aspectRatio || "16:9",
       imageType: body.imageType || "general",
-      width: 1280,
-      height: 720,
+      width: body.aspectRatio === "1:1" ? 1024 : 1280,
+      height: body.aspectRatio === "9:16" ? 1280 : 720,
       success: true,
-      provider: "mock-direct"
+      provider: "unsplash-fallback"
     });
 
   } catch (error: any) {
     console.error('Vercel: Image generation error:', error);
+
+    // 최종 fallback
     return NextResponse.json({
-      imageUrl: `https://picsum.photos/800/600?random=${Date.now()}`,
+      imageUrl: `https://picsum.photos/1280/720?random=${Date.now()}`,
       prompt: body.prompt || "",
       optimizedPrompt: body.prompt || "",
       style: body.style || "realistic",
@@ -167,7 +115,7 @@ except Exception as e:
       width: 1280,
       height: 720,
       success: true,
-      provider: "mock-error"
+      provider: "picsum-error-fallback"
     });
   }
 }
