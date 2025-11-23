@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import FileManager from '@/app/components/FileManager';
 
 interface Scene {
   videoSearchKeyword: string[];
@@ -143,6 +144,7 @@ const autovidTemplates: Template[] = [
 ];
 
 export default function AutoVideoPage() {
+  const [activeTab, setActiveTab] = useState<'create' | 'files'>('create');
   const [workflow, setWorkflow] = useState<Workflow>({
     step1: { status: 'idle', subject: '', duration: '5-10', imageCount: 5, style: 'engaging', language: 'korean' },
     step2: { status: 'idle', title: '', script: [], scenes: [] },
@@ -498,10 +500,37 @@ export default function AutoVideoPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-12">🎬 AutoVid - 5단계 영상 생성</h1>
+        <h1 className="text-4xl font-bold text-white mb-8">🎬 AutoVid - 영상 생성 플랫폼</h1>
 
-        {/* ===== STEP 1: 프롬프트 설정 ===== */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 mb-8">
+        {/* 탭 네비게이션 */}
+        <div className="flex gap-2 mb-8">
+          <button
+            onClick={() => setActiveTab('create')}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              activeTab === 'create'
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25'
+                : 'bg-white/10 text-gray-300 hover:bg-white/20'
+            }`}
+          >
+            🎬 영상 생성
+          </button>
+          <button
+            onClick={() => setActiveTab('files')}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              activeTab === 'files'
+                ? 'bg-green-600 text-white shadow-lg shadow-green-500/25'
+                : 'bg-white/10 text-gray-300 hover:bg-white/20'
+            }`}
+          >
+            📁 파일 관리
+          </button>
+        </div>
+
+        {/* 영상 생성 탭 내용 */}
+        {activeTab === 'create' && (
+          <>
+            {/* ===== STEP 1: 프롬프트 설정 ===== */}
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 mb-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold">1</div>
             <h2 className="text-2xl font-bold text-white">프롬프트 설정</h2>
@@ -950,6 +979,13 @@ export default function AutoVideoPage() {
               <div className="text-red-400">❌ {workflow.step5.error}</div>
             )}
           </div>
+        )}
+          </>
+        )}
+
+        {/* 파일 관리 탭 내용 */}
+        {activeTab === 'files' && (
+          <FileManager />
         )}
       </div>
     </div>
