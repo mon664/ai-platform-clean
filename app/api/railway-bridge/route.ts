@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Railway AutoBlog API URL (환경 변수에서 가져오기)
-const RAILWAY_API_URL = process.env.RAILWAY_API_URL || 'https://autoblog-python-production.up.railway.app';
+const RAILWAY_API_URL = process.env.RAILWAY_API_URL || '';
+
+// Railway 배포되지 않은 경우 Mock 모드 활성화
+const USE_MOCK_MODE = !RAILWAY_API_URL || RAILWAY_API_URL.includes('autoblog-python-production.up.railway.app');
 
 // API 엔드포인트 매핑
 const endpoints = {
@@ -15,6 +18,64 @@ const endpoints = {
 } as const;
 
 type EndpointKey = keyof typeof endpoints;
+
+// Mock 응답 생성 함수
+function createMockResponse(action: EndpointKey, data: any) {
+  const mockResponses = {
+    blogger: {
+      success: true,
+      message: 'Mock: Blogger 포스팅 성공',
+      url: 'https://mock-blogger-url.com',
+      title: data?.title || 'Mock Blog Title',
+      id: `mock_${Date.now()}`
+    },
+    tistory: {
+      success: true,
+      message: 'Mock: Tistory 포스팅 성공',
+      url: 'https://mock-tistory-url.com',
+      title: data?.title || 'Mock Tistory Title',
+      id: `mock_${Date.now()}`
+    },
+    keywords: {
+      success: true,
+      message: 'Mock: 키워드 분석 완료',
+      keywords: ['키워드1', '키워드2', '키워드3'],
+      competition: 'medium',
+      volume: 'high'
+    },
+    content: {
+      success: true,
+      message: 'Mock: 콘텐츠 생성 완료',
+      content: `Mock 생성된 콘텐츠: ${data?.keyword || '주제'}`,
+      word_count: 500,
+      readability_score: 85
+    },
+    searchconsole: {
+      success: true,
+      message: 'Mock: Search Console 제출 완료',
+      submitted_urls: data?.url ? [data.url] : []
+    },
+    coupang: {
+      success: true,
+      message: 'Mock: 쿠팡 검색 완료',
+      products: [
+        { title: 'Mock 상품 1', price: '10,000원', rating: 4.5 },
+        { title: 'Mock 상품 2', price: '20,000원', rating: 4.2 }
+      ]
+    },
+    health: {
+      status: 'ok',
+      message: 'Mock Mode: Railway API 연동 준비됨',
+      mock_mode: true
+    }
+  };
+
+  return mockResponses[action] || {
+    success: true,
+    message: `Mock 응답: ${action} 처리됨`,
+    mock_mode: true
+  };
+}
 
 // API 요청 핸들러
 export async function POST(request: NextRequest) {
@@ -36,6 +97,17 @@ export async function POST(request: NextRequest) {
         { success: false, error: `Unknown action: ${action}` },
         { status: 400 }
       );
+    }
+
+    // Mock 모드인 경우 즉시 Mock 응답 반환
+    if (USE_MOCK_MODE) {
+      const mockData = createMockResponse(action, { keyword, content, url, limit, template });
+      return NextResponse.json({
+        ...mockData,
+        timestamp: new Date().toISOString(),
+        mock_mode: true,
+        message: mockData.message + ' (Mock 모드 - Railway API 연동 필요 시 RAILWAY_API_URL 설정)'
+      });
     }
 
     // Railway API 요청 본문 구성
