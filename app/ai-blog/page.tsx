@@ -15,6 +15,60 @@ export default function AIBlogPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [template, setTemplate] = useState('general');
+  const [improvingTopic, setImprovingTopic] = useState(false);
+
+  const improveTopic = async () => {
+    if (!keyword.trim()) {
+      alert('주제를 입력해주세요');
+      return;
+    }
+
+    // localStorage에서 Gemini API 키 가져오기
+    const savedSettings = localStorage.getItem('appSettings');
+    let geminiApiKey = '';
+
+    if (savedSettings) {
+      const settings = JSON.parse(savedSettings);
+      const geminiKey = settings.apiKeys?.find((key: any) => key.id === 'gemini');
+      geminiApiKey = geminiKey?.value || '';
+    }
+
+    if (!geminiApiKey) {
+      const goToSettings = confirm('Gemini API 키가 설정되지 않았습니다.\n\nSettings 페이지로 이동하여 API 키를 설정하시겠습니까?');
+      if (goToSettings) {
+        window.location.href = '/settings';
+      }
+      return;
+    }
+
+    setImprovingTopic(true);
+
+    try {
+      const response = await fetch('/api/ai/improve-topic', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          topic: keyword,
+          apiKey: geminiApiKey,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.improvedTopic) {
+        setKeyword(data.improvedTopic);
+        alert('✅ 주제가 개선되었습니다!');
+      } else {
+        alert('주제 개선 실패: ' + (data.error || '알 수 없는 오류'));
+      }
+    } catch (error: any) {
+      alert('주제 개선 중 오류 발생: ' + error.message);
+    } finally {
+      setImprovingTopic(false);
+    }
+  };
 
   const generateBlog = async () => {
     if (!keyword.trim()) {
@@ -108,6 +162,14 @@ export default function AIBlogPage() {
             placeholder="예: AI 기술, 최신 IT 트렌드, 웹 개발 팁..."
             className="w-full bg-gray-700 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+
+          <button
+            onClick={improveTopic}
+            disabled={improvingTopic}
+            className="w-full mt-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+          >
+            {improvingTopic ? '개선 중...' : '✨ AI 주제 개선하기'}
+          </button>
 
           <label className="block text-lg font-semibold mb-3 mt-4">템플릿</label>
           <select

@@ -24,33 +24,39 @@ export const TEXT_MODELS = {
     }
   },
   google: {
-    'gemini-pro': {
-      name: 'Gemini Pro',
-      maxTokens: 2048,
+    'gemini-2.0-flash-exp': {
+      name: 'Gemini 2.0 Flash Experimental',
+      maxTokens: 8192,
       costPer1KTokens: 0.0005,
-      description: 'Google AI model'
+      description: 'Google AI latest model - Fast and efficient'
+    },
+    'gemini-1.5-pro': {
+      name: 'Gemini 1.5 Pro',
+      maxTokens: 8192,
+      costPer1KTokens: 0.0025,
+      description: 'Google AI stable model'
     }
   }
 };
 
 export const IMAGE_MODELS = {
+  google: {
+    'vertex-ai-imagen': {
+      name: 'Vertex AI Imagen',
+      costPerImage: 0.02,
+      description: 'Google Cloud Imagen model - High quality image generation'
+    },
+    'vertex-ai-stable-diffusion': {
+      name: 'Vertex AI Stable Diffusion',
+      costPerImage: 0.01,
+      description: 'Google Cloud Stable Diffusion - Fast generation'
+    }
+  },
   openai: {
     'dall-e-3': {
       name: 'DALL-E 3',
       costPerImage: 0.04,
-      description: 'High quality image generation'
-    },
-    'dall-e-2': {
-      name: 'DALL-E 2',
-      costPerImage: 0.02,
-      description: 'Standard image generation'
-    }
-  },
-  stability: {
-    'stable-diffusion': {
-      name: 'Stable Diffusion',
-      costPerImage: 0.01,
-      description: 'Open source image generation'
+      description: 'OpenAI DALL-E 3 - High quality image generation'
     }
   }
 };
@@ -73,5 +79,5 @@ export function estimateCostImage(model: string, images: number): number {
   return 0;
 }
 
-export const DEFAULT_TEXT_MODEL = 'gpt-3.5-turbo';
-export const DEFAULT_IMAGE_MODEL = 'dall-e-3';
+export const DEFAULT_TEXT_MODEL = 'gemini-2.0-flash-exp';
+export const DEFAULT_IMAGE_MODEL = 'vertex-ai-imagen';

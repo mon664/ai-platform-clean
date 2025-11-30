@@ -18,6 +18,7 @@ export default function Navigation() {
     { href: '/character', icon: '🧑', label: '캐릭터', color: '#a855f7' },
     { href: '/tts', icon: '🔊', label: 'TTS', color: '#06b6d4' },
     { href: '/short-story', icon: '📱', label: '썰 쇼츠', color: '#f59e0b' },
+    { href: '/settings', icon: '⚙️', label: '설정', color: '#9ca3af' },
   ];
 
   return (
@@ -36,10 +37,10 @@ export default function Navigation() {
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <Link href="/" style={{ 
-          fontSize: '1.5rem', 
-          fontWeight: 'bold', 
-          color: '#4ade80', 
+        <Link href="/" style={{
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          color: '#4ade80',
           textDecoration: 'none',
           whiteSpace: 'nowrap'
         }}>
@@ -66,9 +67,9 @@ export default function Navigation() {
         </button>
 
         {/* Desktop Menu */}
-        <div style={{ 
-          display: 'flex', 
-          gap: '0.5rem', 
+        <div style={{
+          display: 'flex',
+          gap: '0.5rem',
           flexWrap: 'wrap',
           justifyContent: 'flex-end',
           alignItems: 'center',
