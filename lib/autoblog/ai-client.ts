@@ -1,5 +1,5 @@
 import { TEXT_MODELS, IMAGE_MODELS } from './models';
-import { loadApiKeys } from './local-storage';
+import { loadApiKeys } from './gcs-storage';
 
 /**
  * 저장된 API 키 불러오기
