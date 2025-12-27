@@ -1,17 +1,26 @@
 import { Storage } from '@google-cloud/storage';
 
+function parseGcpCredentials(keyJson: string): any {
+  const trimmed = keyJson.trim();
+  try {
+    const decoded = Buffer.from(trimmed, 'base64').toString();
+    if (decoded.startsWith('{')) return JSON.parse(decoded);
+  } catch {}
+  try {
+    const fixed = trimmed.replace(/\n/g, String.fromCharCode(10));
+    return JSON.parse(fixed);
+  } catch {}
+  return JSON.parse(trimmed);
+}
+
 const storage = new Storage({
-  keyFilename: process.env.GCP_SERVICE_ACCOUNT_KEY
-    ? undefined
-    : undefined,
   credentials: process.env.GCP_SERVICE_ACCOUNT_KEY
-    ? JSON.parse(Buffer.from(process.env.GCP_SERVICE_ACCOUNT_KEY, "base64").toString())
+    ? parseGcpCredentials(process.env.GCP_SERVICE_ACCOUNT_KEY)
     : undefined,
 });
 
 const bucketName = process.env.GCS_BUCKET_NAME || 'run-sources-surviving-new-us-central1';
 const bucket = storage.bucket(bucketName);
-
 // Blog platform type
 export type BlogPlatform = 'blogger' | 'wordpress' | 'tistory';
 
