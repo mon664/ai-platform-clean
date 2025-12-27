@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface Schedule {
   id: string;
@@ -16,7 +16,6 @@ interface Schedule {
 
 export default function SchedulePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
