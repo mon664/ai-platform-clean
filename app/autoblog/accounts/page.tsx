@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 type BlogPlatform = 'blogger' | 'wordpress' | 'tistory';
 
@@ -36,7 +36,6 @@ type BlogAccount = BloggerAccount | WordPressAccount | TistoryAccount;
 
 export default function AccountsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [accounts, setAccounts] = useState<BlogAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
