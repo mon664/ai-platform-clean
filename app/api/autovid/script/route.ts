@@ -31,95 +31,31 @@ export async function POST(request: NextRequest) {
 
 async function generateScriptWithGemini(prompt: string, style: string, duration: string, language: string) {
   try {
+    // 디버깅 로그 추가
+    console.log('AutoVid script generation - language:', language, 'style:', style, 'duration:', duration);
+
     // 원본 AutoVid 프롬프트 템플릿 사용
     const requestNumber = Math.floor(Math.random() * 3) + 3; // 3-5 segments
     const requestLanguage = language === 'english' ? 'en-US' : 'ko-KR';
 
+    // 스타일에 맞는 톤망 설정
+    const getStylePrompt = (styleType: string) => {
+      switch(styleType) {
+        case 'professional': return 'Write in a professional, informative tone.';
+        case 'casual': return 'Write in a casual, friendly tone like talking to a friend.';
+        case 'educational': return 'Write in an educational, teaching style.';
+        case 'engaging':
+        default: return 'Write in an engaging, interesting style that captures attention.';
+      }
+    };
+
+    // 쇼츠 페이지와 완전히 똑같은 프롬프트 사용 + 스타일 반영
+    const targetLength = duration === '5-10' ? 300 : duration === '10-15' ? 450 : 200;
+    const stylePrompt = getStylePrompt(style);
+    // 쇼츠와 동일한 간단하고 효과적인 프롬프트 사용
     const scriptPrompt = language === 'english'
-      ? `You are an API-style assistant.
-
-# STRICT OUTPUT POLICY
-1. Respond **only** with a single JSON object that exactly matches "RESPONSE_SCHEMA".
-2. Do **NOT** wrap the JSON in markdown fences, add comments, change key order, or include extra properties.
-3. If you cannot comply, respond with:
-   { "error": "EXPLANATION_OF_PROBLEM" }
-
-# REQUEST_SCHEMA
-{
-  "subject": "${prompt}",
-  "requestNumber": ${requestNumber},
-  "requestLanguage": "${requestLanguage}",
-  "includeOpeningSegment": true,
-  "includeClosingSegment": true,
-  "includeImageGenPrompt": true
-}
-
-# RESPONSE_SCHEMA
-{
-  "title": string,
-  "openingSegment": {
-    "videoSearchKeyword": [ string, ... ],
-    "script": [ string, ... ],
-    "imageGenPrompt": string
-  },
-  "snippets": [
-    {
-      "videoSearchKeyword": [ string, ... ],
-      "segmentTitle": string,
-      "rank": integer,
-      "script": [ string, ... ],
-      "imageGenPrompt": string
-    }
-  ]
-}
-
-# SPECIAL_CONSTRAINTS
-- openingSegment.script[0] MUST start with a curiosity-hook that prevents viewer drop-off.
-- 모든 imageGenPrompt 길이는 120자 이하.
-
-Begin.`
-      : `당신은 API 스타일의 어시스턴트입니다.
-
-# 엄격한 출력 정책
-1. "RESPONSE_SCHEMA"와 정확히 일치하는 단일 JSON 객체로만 응답하세요.
-2. JSON을 마크다운 울타리로 감싸지 말고, 주석을 추가하지 말고, 키 순서를 변경하지 말고, 추가 속성을 포함하지 마세요.
-3. 준수할 수 없는 경우 다음으로 응답하세요:
-   { "error": "문제에 대한 설명" }
-
-# REQUEST_SCHEMA
-{
-  "subject": "${prompt}",
-  "requestNumber": ${requestNumber},
-  "requestLanguage": "${requestLanguage}",
-  "includeOpeningSegment": true,
-  "includeClosingSegment": true,
-  "includeImageGenPrompt": true
-}
-
-# RESPONSE_SCHEMA
-{
-  "title": string,
-  "openingSegment": {
-    "videoSearchKeyword": [ string, ... ],
-    "script": [ string, ... ],
-    "imageGenPrompt": string
-  },
-  "snippets": [
-    {
-      "videoSearchKeyword": [ string, ... ],
-      "segmentTitle": string,
-      "rank": integer,
-      "script": [ string, ... ],
-      "imageGenPrompt": string
-    }
-  ]
-}
-
-# 특별 제약 조건
-- openingSegment.script[0]는 시청자 이탈을 방지하는 호기심 유발 문장으로 시작해야 합니다.
-- 모든 imageGenPrompt 길이는 120자 이하입니다.
-
-시작하세요.`;
+      ? `Create a ${requestNumber}-scene YouTube Shorts script about "${prompt}" in English. Target length: ~${targetLength} characters. ${stylePrompt} Return only the script text.`
+      : `Create a ${requestNumber}-scene YouTube Shorts script about "${prompt}" in Korean. Target length: ~${targetLength} characters. ${stylePrompt} Return only the script text.`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
@@ -134,33 +70,77 @@ Begin.`
     }
 
     const data = await response.json();
-    const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const scriptText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // JSON 파싱 시도
-    let scriptData;
+    // 쇼츠와 똑같이 2단계 프로세스: 먼저 스크립트 생성, then 장면 추출
+    let scenes: string[] = [];
+
+    // 2단계: 장면 프롬프트 생성 (script 기반으로 sceneCount개 JSON 배열 요청)
     try {
-      const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        scriptData = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('No JSON found');
+      const scenesReq = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: `From the following Korean YouTube Shorts script, extract ${requestNumber} concise scene descriptions for image generation. One line per scene, vivid and specific. Return ONLY a JSON array of strings.\n\nSCRIPT:\n"""${scriptText}"""`
+              }]
+            }]
+          })
+        }
+      );
+
+      if (scenesReq.ok) {
+        const scenesJson = await scenesReq.json();
+        const scenesTextRaw = scenesJson.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+
+        try {
+          scenes = JSON.parse(String(scenesTextRaw).replace(/```json\n?|\n?```/g, ''))
+            .filter((s: any) => typeof s === 'string' && s.trim().length > 0);
+        } catch {
+          // JSON 파싱 실패시 fallback
+        }
       }
-    } catch {
-      // JSON 파싱 실패시 기본 구조로 fallback
-      scriptData = await parseScriptFromText(rawResponse, prompt, language);
+    } catch (error) {
+      console.log('장면 추출 실패, fallback 방식 사용');
     }
 
-    // 원본 AutoVid 스키마를 우리 scenes 형식으로 변환
-    const convertedData = convertAutoVidSchema(scriptData);
+    // Fallback: derive scenes from script text if parsing failed/empty
+    if (!Array.isArray(scenes) || scenes.length === 0) {
+      const clean = String(scriptText).replace(/\r/g, '').trim()
+      const chunks = clean.split(/\n{2,}|\.|!|\?/).map(s => s.trim()).filter(Boolean)
+      const wanted = Math.max(1, requestNumber || 5)
+      const approx = Math.ceil(chunks.length / wanted)
+      const derived: string[] = []
+      for (let i = 0; i < wanted; i++) {
+        const start = i * approx
+        const slice = chunks.slice(start, start + approx).join(' ')
+        derived.push((slice || `씬 ${i+1}`).slice(0, 180))
+      }
+      scenes = derived
+    }
+
+    // 쇼츠처럼 scenes 배열로 변환 + 이미지용과 TTS용 대본 분리
+    const sceneObjects = scenes.slice(0, requestNumber).map((scene, index) => ({
+      scene_number: index + 1,
+      title: `씬 ${index + 1}`,
+      imagePrompt: scene.trim().slice(0, 100), // 100자 이내로 이미지 프롬프트 최적화
+      dialogue: scene, // TTS가 읽을 실제 대본 (나레이션)
+      content: scene // 기존 호환성 유지
+    }));
 
     return NextResponse.json({
       success: true,
       data: {
-        ...convertedData,
+        title: `${prompt} - 자동 생성 대본`,
+        script: scriptText,
+        scenes: sceneObjects,
         duration: `${duration}분`,
         language: language,
         generated: new Date().toISOString(),
-        originalSchema: scriptData // 원본 스키마도 포함
+        generationMethod: "shorts_exact_match" // 쇼츠와 완전히 동일한 방식
       }
     });
 
@@ -259,7 +239,9 @@ async function generateDefaultScript(topic: string, style: string, duration: str
       openingScene = {
         scene_number: 1,
         title: "오프닝",
-        content: `안녕하세요! 오늘은 ${topic}에 대해 흥미로운 내용으로 찾아왔습니다. ${style}한 스타일로 차근차근 설명해 드릴게요.`
+        content: `안녕하세요! 오늘은 ${topic}에 대해 흥미로운 내용으로 찾아왔습니다. ${style}한 스타일로 차근차근 설명해 드릴게요.`,
+        imagePrompt: `안녕하세요 인사하는 ${topic} 주제의 프레젠테이션 오프닝 장면`,
+        dialogue: `안녕하세요! 오늘은 ${topic}에 대해 흥미로운 내용으로 찾아왔습니다. ${style}한 스타일로 차근차근 설명해 드릴게요.`
       };
 
       mainContents = [
@@ -272,7 +254,9 @@ async function generateDefaultScript(topic: string, style: string, duration: str
       closingScene = {
         scene_number: sceneCount,
         title: "클로징",
-        content: `오늘 ${topic}에 대해 함께 알아보면서 많은 것을 배웠습니다. ${style}한 설명이 도움이 되셨길 바랍니다. 구독과 좋아요 부탁드리며, 다음 영상에서 만나요!`
+        content: `오늘 ${topic}에 대해 함께 알아보면서 많은 것을 배웠습니다. ${style}한 설명이 도움이 되셨길 바랍니다. 구독과 좋아요 부탁드리며, 다음 영상에서 만나요!`,
+        imagePrompt: `${topic} 주제 마무리 및 구독 독려 클로징 장면`,
+        dialogue: `오늘 ${topic}에 대해 함께 알아보면서 많은 것을 배웠습니다. ${style}한 설명이 도움이 되셨길 바랍니다. 구독과 좋아요 부탁드리며, 다음 영상에서 만나요!`
       };
     }
 
@@ -283,7 +267,9 @@ async function generateDefaultScript(topic: string, style: string, duration: str
       scenes.push({
         scene_number: i,
         title: language === 'english' ? `Main Point ${i - 1}` : `본론 ${i - 1}`,
-        content: mainContents[contentIndex]
+        content: mainContents[contentIndex],
+        imagePrompt: `${topic}에 대한 ${style}한 설명 장면 ${i - 1}`,
+        dialogue: mainContents[contentIndex]
       });
     }
 

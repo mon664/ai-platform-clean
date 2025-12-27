@@ -1,0 +1,100 @@
+.footer {
+    background-color: var(--gray-light);
+    padding: 60px 0 20px;
+    margin-top: 60px;
+    font-size: 13px;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.top {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 40px;
+}
+
+.newsletter {
+    flex: 1;
+    min-width: 300px;
+}
+
+.newsletter h3 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+}
+
+.newsletter p {
+    margin-bottom: 20px;
+    color: var(--gray-dark);
+}
+
+.form {
+    display: flex;
+    gap: 10px;
+}
+
+.input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background: transparent;
+    font-family: inherit;
+}
+
+.button {
+    padding: 10px 20px;
+    background-color: var(--foreground);
+    color: var(--background);
+    border: none;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 12px;
+}
+
+.links {
+    display: flex;
+    gap: 60px;
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.column h4 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.column a {
+    color: var(--gray-dark);
+}
+
+.bottom {
+    border-top: 1px solid #ddd;
+    padding-top: 20px;
+    text-align: center;
+    color: var(--gray-medium);
+}
+
+@media (max-width: 768px) {
+    .top {
+        flex-direction: column;
+    }
+
+    .links {
+        flex-wrap: wrap;
+        gap: 40px;
+    }
+}

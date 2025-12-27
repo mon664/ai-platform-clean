@@ -214,6 +214,53 @@ export async function initializeAutoBlogDatabase() {
       )
     `;
 
+    // Create autoblog_api_keys table
+    await sql`
+      CREATE TABLE IF NOT EXISTS autoblog_api_keys (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        api_keys JSONB NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        CONSTRAINT single_key CHECK (id = 1)
+      )
+    `;
+
+    // Create autoblog_accounts table
+    await sql`
+      CREATE TABLE IF NOT EXISTS autoblog_accounts (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(255),
+        platform VARCHAR(50) NOT NULL,
+        account_name VARCHAR(255) NOT NULL,
+        blog_id VARCHAR(255),
+        blog_url TEXT,
+        client_id TEXT,
+        client_secret TEXT,
+        api_key TEXT,
+        access_token TEXT,
+        refresh_token TEXT,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
+    // Create autoblog_schedules table
+    await sql`
+      CREATE TABLE IF NOT EXISTS autoblog_schedules (
+        id SERIAL PRIMARY KEY,
+        account_id INTEGER REFERENCES autoblog_accounts(id) ON DELETE CASCADE,
+        title VARCHAR(500) NOT NULL,
+        content TEXT NOT NULL,
+        scheduled_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        post_id VARCHAR(255),
+        error_message TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `;
+
     // Create indexes
     await sql`
       CREATE INDEX IF NOT EXISTS idx_auto_blog_history_created_at ON auto_blog_history(created_at DESC)
@@ -229,6 +276,26 @@ export async function initializeAutoBlogDatabase() {
 
     await sql`
       CREATE INDEX IF NOT EXISTS idx_auto_blog_topics_queue_created_at ON auto_blog_topics_queue(created_at)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_autoblog_accounts_platform ON autoblog_accounts(platform)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_autoblog_accounts_is_active ON autoblog_accounts(is_active)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_autoblog_schedules_account_id ON autoblog_schedules(account_id)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_autoblog_schedules_scheduled_at ON autoblog_schedules(scheduled_at)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_autoblog_schedules_status ON autoblog_schedules(status)
     `;
 
     console.log('Auto-blog database initialized successfully');

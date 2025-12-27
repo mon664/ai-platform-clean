@@ -12,7 +12,8 @@ export default function Navigation() {
     { href: '/', icon: '🏠', label: '대시보드', color: '#4ade80' },
     { href: '/blog', icon: '📝', label: '블로그', color: '#60a5fa' },
     { href: '/ai-blog', icon: '🤖', label: 'AI 블로그', color: '#10b981' },
-    { href: '/autovid/auto', icon: '🔥', label: '자동영상생성', color: '#f97316', badge: 'NEW' },
+    { href: '/autoblog', icon: '✨', label: 'AlphaAutoBlog', color: '#a855f7', badge: 'NEW' },
+    { href: '/autovid/auto', icon: '🔥', label: '자동영상생성', color: '#f97316' },
     { href: '/shorts', icon: '🎬', label: '쇼츠', color: '#ec4899' },
     { href: '/story', icon: '🎭', label: '장면', color: '#f97316' },
     { href: '/character', icon: '🧑', label: '캐릭터', color: '#a855f7' },
@@ -50,18 +51,14 @@ export default function Navigation() {
         {/* Mobile Menu Button */}
         <button
           onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="lg:hidden"
           style={{
-            display: 'none',
-            '@media (max-width: 1024px)': {
-              display: 'block'
-            },
             background: 'none',
             border: 'none',
             color: '#9ca3af',
             fontSize: '1.5rem',
             cursor: 'pointer'
           }}
-          className="mobile-menu-btn"
         >
           ☰
         </button>
@@ -75,7 +72,7 @@ export default function Navigation() {
           alignItems: 'center',
           flex: 1,
           marginLeft: '1rem'
-        }} className="desktop-menu">
+        }} className="hidden lg:flex desktop-menu">
           {menuItems.map((item) => (
             <Link
               key={item.href}
@@ -132,7 +129,7 @@ export default function Navigation() {
             flexDirection: 'column',
             gap: '0.5rem',
             zIndex: 100
-          }} className="mobile-menu-dropdown">
+          }} className="lg:hidden mobile-menu-dropdown">
             {menuItems.map((item) => (
               <Link
                 key={item.href}
@@ -173,22 +170,6 @@ export default function Navigation() {
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        @media (max-width: 1024px) {
-          .desktop-menu {
-            display: none !important;
-          }
-          .mobile-menu-btn {
-            display: block !important;
-          }
-        }
-        @media (max-width: 768px) {
-          .menu-label {
-            display: none;
-          }
-        }
-      `}</style>
     </nav>
   );
 }

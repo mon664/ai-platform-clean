@@ -53,14 +53,6 @@ const nextConfig: NextConfig = {
       });
     }
 
-    // 런타임에서 Redis 모듈 로드를 완전히 차단
-    config.resolve = config.resolve || {};
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'ioredis': false,
-      'redis': false,
-    };
-
     return config;
   },
 };

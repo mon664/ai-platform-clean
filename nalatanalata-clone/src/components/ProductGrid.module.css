@@ -1,0 +1,93 @@
+.section {
+    padding: 60px 0;
+    background-color: var(--background);
+    /* Ensure white background */
+}
+
+.container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 40px;
+}
+
+.title {
+    font-family: 'Times New Roman', serif;
+    font-size: 24px;
+    font-weight: 400;
+}
+
+.viewAll {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--accent);
+    /* Red underline style */
+    padding-bottom: 2px;
+    color: var(--foreground);
+    text-decoration: none;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    /* 4 Columns */
+    gap: 40px;
+    /* Larger gap */
+}
+
+.card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+}
+
+.imageWrapper {
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%;
+    /* Square aspect ratio */
+    margin-bottom: 15px;
+    background-color: transparent;
+    /* No background for image wrapper */
+}
+
+.image {
+    object-fit: contain;
+    /* Ensure image is contained within the square */
+}
+
+.details {
+    text-align: center;
+}
+
+.name {
+    font-size: 14px;
+    font-weight: 400;
+    margin-bottom: 5px;
+}
+
+.price {
+    font-size: 13px;
+    color: var(--gray-medium);
+}
+
+@media (max-width: 1024px) {
+    .grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+}
