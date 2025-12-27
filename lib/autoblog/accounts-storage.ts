@@ -1,8 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-
-const STORAGE_DIR = path.join(process.cwd(), '.autoblog-storage');
-const ACCOUNTS_FILE = path.join(STORAGE_DIR, 'accounts.json');
+import { loadAccounts, saveAccounts } from './gcs-storage';
 
 export type BlogPlatformType = 'wordpress' | 'tistory' | 'other';
 
@@ -22,40 +18,24 @@ export interface WordPressAccount extends BaseBlogAccount {
 
 export interface TistoryAccount extends BaseBlogAccount {
   platform: 'tistory';
-  blogName: string;      // Tistory 블로그 이름 (예: mon664)
-  tistoryId: string;     // 티스토리 ID (이메일)
-  tistoryPassword: string; // 티스토리 비밀번호
+  blogName: string;
+  tistoryId: string;
+  tistoryPassword: string;
   tistoryUrl?: string;
 }
 
 export type BlogAccount = WordPressAccount | TistoryAccount;
 
-function ensureStorageDir() {
-  if (!fs.existsSync(STORAGE_DIR)) {
-    fs.mkdirSync(STORAGE_DIR, { recursive: true });
-  }
+async function getAccounts(): Promise<BlogAccount[]> {
+  return await loadAccounts();
 }
 
-function getAccounts(): BlogAccount[] {
-  ensureStorageDir();
-  if (!fs.existsSync(ACCOUNTS_FILE)) {
-    return [];
-  }
-  try {
-    const data = fs.readFileSync(ACCOUNTS_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
-
-function saveAccounts(accounts: BlogAccount[]): void {
-  ensureStorageDir();
-  fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2));
+async function saveAccountsData(accounts: BlogAccount[]): Promise<void> {
+  await saveAccounts(accounts);
 }
 
 export async function getBlogAccounts(): Promise<BlogAccount[]> {
-  return getAccounts();
+  return await getAccounts();
 }
 
 export async function createWordPressAccount(data: {
@@ -64,7 +44,7 @@ export async function createWordPressAccount(data: {
   username: string;
   applicationPassword: string;
 }): Promise<WordPressAccount> {
-  const accounts = getAccounts();
+  const accounts = await getAccounts();
   const existing = accounts.find(a => a.platform === 'wordpress' && 
     (a as WordPressAccount).siteUrl === data.siteUrl);
   if (existing) {
@@ -82,7 +62,7 @@ export async function createWordPressAccount(data: {
   };
 
   accounts.push(newAccount);
-  saveAccounts(accounts);
+  await saveAccountsData(accounts);
   return newAccount;
 }
 
@@ -93,7 +73,7 @@ export async function createTistoryAccount(data: {
   tistoryPassword: string;
   tistoryUrl?: string;
 }): Promise<TistoryAccount> {
-  const accounts = getAccounts();
+  const accounts = await getAccounts();
   const existing = accounts.find(a => a.platform === 'tistory' && 
     (a as TistoryAccount).blogName === data.blogName);
   if (existing) {
@@ -112,7 +92,7 @@ export async function createTistoryAccount(data: {
   };
 
   accounts.push(newAccount);
-  saveAccounts(accounts);
+  await saveAccountsData(accounts);
   return newAccount;
 }
 
@@ -124,7 +104,7 @@ export async function createBlogAccount(data: any): Promise<BlogAccount> {
     return createTistoryAccount(data);
   }
 
-  const accounts = getAccounts();
+  const accounts = await getAccounts();
   const existing = accounts.find(a => a.id === data.blogId);
   if (existing) {
     throw new Error('Account already exists');
@@ -139,12 +119,12 @@ export async function createBlogAccount(data: any): Promise<BlogAccount> {
   } as any;
 
   accounts.push(newAccount);
-  saveAccounts(accounts);
+  await saveAccountsData(accounts);
   return newAccount;
 }
 
 export async function updateBlogAccount(id: number, data: any): Promise<BlogAccount | null> {
-  const accounts = getAccounts();
+  const accounts = await getAccounts();
   const index = accounts.findIndex(a => a.id === id);
   if (index === -1) {
     return null;
@@ -167,17 +147,17 @@ export async function updateBlogAccount(id: number, data: any): Promise<BlogAcco
     if (data.tistoryUrl !== undefined) tistoryAccount.tistoryUrl = data.tistoryUrl;
   }
 
-  saveAccounts(accounts);
+  await saveAccountsData(accounts);
   return accounts[index];
 }
 
 export async function deleteBlogAccount(id: number): Promise<boolean> {
-  const accounts = getAccounts();
+  const accounts = await getAccounts();
   const filtered = accounts.filter(a => a.id !== id);
   if (filtered.length === accounts.length) {
     return false;
   }
-  saveAccounts(filtered);
+  await saveAccountsData(filtered);
   return true;
 }
 

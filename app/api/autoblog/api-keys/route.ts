@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveApiKeysLocally, loadApiKeysLocally, deleteApiKeyLocally } from '@/lib/autoblog/local-storage';
+import { loadApiKeys, saveApiKeys } from '@/lib/autoblog/gcs-storage';
 
 /**
  * GET: API 키 불러오기
  */
 export async function GET() {
   try {
-    const apiKeys = await loadApiKeysLocally();
+    const apiKeys = await loadApiKeys();
     return NextResponse.json({ apiKeys });
   } catch (error) {
     console.error('Error loading API keys:', error);
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await saveApiKeysLocally(apiKeys);
+    await saveApiKeys(apiKeys);
 
     return NextResponse.json({
       success: true,
@@ -61,7 +61,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await deleteApiKeyLocally(key);
+    const apiKeys = await loadApiKeys();
+    delete apiKeys[key];
+    await saveApiKeys(apiKeys);
 
     return NextResponse.json({
       success: true,

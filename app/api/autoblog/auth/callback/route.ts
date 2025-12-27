@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadApiKeysLocally, saveBloggerTokens, saveAccount } from '@/lib/autoblog/local-storage';
+import { loadApiKeys, saveBloggerTokens, saveBlogAccount } from '@/lib/autoblog/gcs-storage';
 
 /**
  * GET: Blogger OAuth 콜백 처리
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     // API 키 로드
-    const apiKeys = await loadApiKeysLocally();
+    const apiKeys = await loadApiKeys();
     const clientId = apiKeys.googleClientId;
     const clientSecret = apiKeys.googleClientSecret;
 
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       connectedAt: new Date().toISOString()
     };
 
-    await saveAccount(account);
+    await saveBlogAccount(account);
 
     return NextResponse.redirect(
       new URL('/autoblog/accounts?success=true', request.url)

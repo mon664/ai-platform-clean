@@ -1,27 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-
-const STORAGE_DIR = path.join(process.cwd(), '.autoblog-storage');
-const POSTS_FILE = path.join(STORAGE_DIR, 'posts.json');
-
-function ensureStorageDir() {
-  if (!fs.existsSync(STORAGE_DIR)) {
-    fs.mkdirSync(STORAGE_DIR, { recursive: true });
-  }
-}
+import { loadPosts, savePosts } from '@/lib/autoblog/gcs-storage';
 
 /**
  * GET: 생성된 글 목록 조회
  */
 export async function GET() {
   try {
-    ensureStorageDir();
-    if (!fs.existsSync(POSTS_FILE)) {
-      return NextResponse.json({ posts: [] });
-    }
-
-    const posts = JSON.parse(fs.readFileSync(POSTS_FILE, 'utf-8'));
+    const posts = await loadPosts();
     return NextResponse.json({ posts });
   } catch (error) {
     console.error('Error fetching posts:', error);
@@ -46,15 +31,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    ensureStorageDir();
-    if (!fs.existsSync(POSTS_FILE)) {
-      return NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
-      );
-    }
-
-    const posts = JSON.parse(fs.readFileSync(POSTS_FILE, 'utf-8'));
+    const posts = await loadPosts();
     const index = posts.findIndex((p: any) => p.slug === slug);
 
     if (index === -1) {
@@ -68,7 +45,7 @@ export async function PUT(request: NextRequest) {
     if (title !== undefined) posts[index].title = title;
     if (content !== undefined) posts[index].content = content;
 
-    fs.writeFileSync(POSTS_FILE, JSON.stringify(posts, null, 2));
+    await savePosts(posts);
 
     return NextResponse.json({
       success: true,
@@ -98,15 +75,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    ensureStorageDir();
-    if (!fs.existsSync(POSTS_FILE)) {
-      return NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
-      );
-    }
-
-    const posts = JSON.parse(fs.readFileSync(POSTS_FILE, 'utf-8'));
+    const posts = await loadPosts();
     const filtered = posts.filter((p: any) => p.slug !== slug);
 
     if (filtered.length === posts.length) {
@@ -116,7 +85,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    fs.writeFileSync(POSTS_FILE, JSON.stringify(filtered, null, 2));
+    await savePosts(filtered);
 
     return NextResponse.json({
       success: true,
