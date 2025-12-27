@@ -28,13 +28,7 @@ export default function SchedulePage() {
     loadSchedules();
     loadPosts();
 
-    // URL 파라미터 확인 (글 목록에서 빠른 예약으로 온 경우)
-    const slugParam = searchParams.get('slug');
-    if (slugParam) {
-      setSelectedSlug(slugParam);
-      setShowModal(true);
-    }
-  }, [searchParams]);
+  });
 
   async function loadSchedules() {
     try {
