@@ -184,7 +184,7 @@ Output: 250-300 words with numerical precision where possible.` },
     const images: string[] = []
     console.log('[DEBUG] Generating scene images')
 
-    for (const i = 0; i < scenes.length; i++) {
+    for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i]
 
       // Gemini 2.0 Flash Exp 시도 (텍스트 기반 이미지 생성)
