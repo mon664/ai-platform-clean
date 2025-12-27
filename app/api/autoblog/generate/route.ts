@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadPosts, savePosts, loadApiKeys } from '@/lib/autoblog/gcs-storage';
-import { generateBlogPost } from '@/lib/autoblog/ai-client';
+import { loadPosts, savePosts } from '@/lib/autoblog/gcs-storage';
+import { generateText } from '@/lib/autoblog/ai-client';
 
 /**
  * POST: 블로그 글 생성
@@ -16,11 +16,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // API 키 로드
-    const apiKeys = await loadApiKeys();
+    // AI 글 생성 프롬프트
+    const prompt = `Write a blog post about: ${topic}
+
+Tone: ${tone}
+Platform: ${platform}
+
+Requirements:
+- Write in Korean
+- Include an engaging title
+- Write a comprehensive article with proper structure (introduction, body paragraphs, conclusion)
+- Make it informative and engaging
+- Length: 800-1200 words`;
 
     // AI 글 생성
-    const content = await generateBlogPost(topic, tone, platform, apiKeys);
+    const result = await generateText('gemini-2.0-flash-exp', prompt, 3000);
+    const content = result.text;
 
     // slug 생성
     const slug = topic

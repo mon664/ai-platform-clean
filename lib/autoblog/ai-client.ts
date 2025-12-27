@@ -1,12 +1,12 @@
 import { TEXT_MODELS, IMAGE_MODELS } from './models';
-import { loadApiKeysLocally } from './local-storage';
+import { loadApiKeys } from './local-storage';
 
 /**
  * 저장된 API 키 불러오기
  */
 async function getApiKeys(): Promise<Record<string, string>> {
   try {
-    return await loadApiKeysLocally();
+    return await loadApiKeys();
   } catch (error) {
     console.error('Failed to load API keys:', error);
     return {};
