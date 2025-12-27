@@ -5,7 +5,7 @@ const storage = new Storage({
     ? undefined
     : undefined,
   credentials: process.env.GCP_SERVICE_ACCOUNT_KEY
-    ? JSON.parse(process.env.GCP_SERVICE_ACCOUNT_KEY)
+    ? JSON.parse(Buffer.from(process.env.GCP_SERVICE_ACCOUNT_KEY, "base64").toString())
     : undefined,
 });
 
